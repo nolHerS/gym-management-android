@@ -6,11 +6,12 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
 import com.imanol.gymmanagement.feature.auth.presentation.LoginScreen
+import com.imanol.gymmanagement.feature.auth.presentation.LoginViewModel
 import com.imanol.gymmanagement.feature.auth.presentation.SplashScreen
 import com.imanol.gymmanagement.feature.home.presentation.HomeScreen
 
 @Composable
-fun GymNavHost() {
+fun GymNavHost(loginViewModel: LoginViewModel) {
     val navController = rememberNavController()
 
     NavHost(
@@ -24,15 +25,7 @@ fun GymNavHost() {
                 )
             }
             composable<Login> {
-                LoginScreen(
-                    onLogin = {
-                        navController.navigate(Home) {
-                            popUpTo<AuthGraph> {
-                                inclusive = true
-                            }
-                        }
-                    },
-                )
+                LoginScreen(viewModel = loginViewModel)
             }
         }
 

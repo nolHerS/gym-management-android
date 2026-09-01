@@ -1,5 +1,7 @@
 package com.imanol.gymmanagement
 
 import android.app.Application
+import dagger.hilt.android.HiltAndroidApp
 
-class GymManagementApplication : Application()
+@HiltAndroidApp(Application::class)
+class GymManagementApplication : Hilt_GymManagementApplication()
