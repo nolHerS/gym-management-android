@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -25,9 +26,16 @@ import com.imanol.gymmanagement.core.designsystem.component.GymTextField
 @Composable
 fun LoginScreen(
     viewModel: LoginViewModel,
+    onLoginSuccess: () -> Unit,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var passwordVisible by rememberSaveable { mutableStateOf(false) }
+
+    LaunchedEffect(uiState.success) {
+        if (uiState.success != null) {
+            onLoginSuccess()
+        }
+    }
 
     Column(
         modifier = Modifier

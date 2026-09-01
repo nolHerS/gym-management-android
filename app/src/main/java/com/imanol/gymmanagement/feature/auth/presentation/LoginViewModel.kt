@@ -2,6 +2,7 @@ package com.imanol.gymmanagement.feature.auth.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.imanol.gymmanagement.core.session.SessionDataStore
 import com.imanol.gymmanagement.feature.auth.data.remote.AuthApi
 import com.imanol.gymmanagement.feature.auth.data.remote.LoginRequest
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -27,13 +28,32 @@ data class LoginUiState(
     val success: LoginSuccess? = null,
 )
 
+enum class SessionState {
+    Checking,
+    Authenticated,
+    Unauthenticated,
+}
+
 @HiltViewModel
 class LoginViewModel @Inject constructor(
     private val authApi: AuthApi,
+    private val sessionDataStore: SessionDataStore,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(LoginUiState())
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
+    private val _sessionState = MutableStateFlow(SessionState.Checking)
+    val sessionState: StateFlow<SessionState> = _sessionState.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            _sessionState.value = if (sessionDataStore.getValidSession() != null) {
+                SessionState.Authenticated
+            } else {
+                SessionState.Unauthenticated
+            }
+        }
+    }
 
     fun updateEmail(email: String) {
         _uiState.update { it.copy(email = email, errorMessage = null) }
@@ -59,6 +79,12 @@ class LoginViewModel @Inject constructor(
                         password = currentState.password,
                     ),
                 )
+                sessionDataStore.saveSession(
+                    token = response.token,
+                    tokenType = response.tokenType,
+                    expiresIn = response.expiresIn,
+                )
+                _sessionState.value = SessionState.Authenticated
                 _uiState.update {
                     it.copy(
                         isLoading = false,
@@ -73,6 +99,14 @@ class LoginViewModel @Inject constructor(
             } catch (_: IOException) {
                 showGenericError()
             }
+        }
+    }
+
+    fun logout() {
+        viewModelScope.launch {
+            sessionDataStore.clearSession()
+            _sessionState.value = SessionState.Unauthenticated
+            _uiState.value = LoginUiState()
         }
     }
 
