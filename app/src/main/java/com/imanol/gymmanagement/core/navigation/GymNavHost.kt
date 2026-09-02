@@ -13,9 +13,10 @@ import com.imanol.gymmanagement.feature.auth.presentation.SessionState
 import com.imanol.gymmanagement.feature.auth.presentation.LoginViewModel
 import com.imanol.gymmanagement.feature.auth.presentation.SplashScreen
 import com.imanol.gymmanagement.feature.home.presentation.HomeScreen
+import com.imanol.gymmanagement.feature.home.presentation.HomeViewModel
 
 @Composable
-fun GymNavHost(loginViewModel: LoginViewModel) {
+fun GymNavHost(loginViewModel: LoginViewModel, homeViewModel: HomeViewModel) {
     val navController = rememberNavController()
     val sessionState by loginViewModel.sessionState.collectAsStateWithLifecycle()
 
@@ -61,6 +62,7 @@ fun GymNavHost(loginViewModel: LoginViewModel) {
         navigation<MainGraph>(startDestination = Home) {
             composable<Home> {
                 HomeScreen(
+                    viewModel = homeViewModel,
                     onLogout = {
                         loginViewModel.logout()
                         navController.navigate(Login) {

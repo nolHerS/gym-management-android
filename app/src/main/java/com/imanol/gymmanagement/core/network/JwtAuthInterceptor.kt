@@ -16,13 +16,15 @@ class JwtAuthInterceptor @Inject constructor(
             return chain.proceed(request)
         }
 
-        val token = runBlocking {
-            sessionDataStore.get().getValidSession()?.token?.takeIf { it.isNotBlank() }
+        val session = runBlocking {
+            sessionDataStore.get().getValidSession()
         } ?: return chain.proceed(request)
+        val token = session.token.takeIf { it.isNotBlank() }
+            ?: return chain.proceed(request)
 
         return chain.proceed(
             request.newBuilder()
-                .header("Authorization", "Bearer $token")
+                .header("Authorization", "${session.tokenType} $token")
                 .build(),
         )
     }

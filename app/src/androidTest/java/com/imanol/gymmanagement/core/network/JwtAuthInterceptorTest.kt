@@ -2,15 +2,16 @@ package com.imanol.gymmanagement.core.network
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.imanol.gymmanagement.core.session.SessionDataStore
 import com.imanol.gymmanagement.feature.auth.data.remote.AuthApi
 import dagger.Lazy
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
-import okhttp3.OkHttpClient
-import okhttp3.MediaType.Companion.toMediaType
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Before
@@ -18,7 +19,6 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import retrofit2.Retrofit
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
-import androidx.test.ext.junit.runners.AndroidJUnit4
 
 @RunWith(AndroidJUnit4::class)
 class JwtAuthInterceptorTest {
@@ -50,7 +50,9 @@ class JwtAuthInterceptorTest {
             MockResponse.Builder()
                 .code(200)
                 .addHeader("Content-Type", "application/json")
-                .body("""{"id":"42"}""")
+                .body(
+                    """{"timestamp":"2026-09-02T22:54:39","status":200,"message":"User retrieved successfully","data":{"id":42}}""",
+                )
                 .build(),
         )
 
@@ -73,8 +75,8 @@ class JwtAuthInterceptorTest {
             .build()
             .create(AuthApi::class.java)
 
-        authApi.getUser("42")
+        authApi.getCurrentUser()
 
-        assertEquals("Bearer test-jwt", server.takeRequest().headers["Authorization"])
+        assertEquals("Bearer${" "}test-jwt", server.takeRequest().headers["Authorization"])
     }
 }
