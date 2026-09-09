@@ -11,6 +11,8 @@ import com.imanol.gymmanagement.feature.home.presentation.HomeViewModel
 import com.imanol.gymmanagement.feature.exercise.presentation.ExerciseCategoriesViewModel
 import com.imanol.gymmanagement.feature.exercise.presentation.ExercisesViewModel
 import com.imanol.gymmanagement.feature.exercise.presentation.ExerciseDetailViewModel
+import com.imanol.gymmanagement.feature.client.presentation.ClientsViewModel
+import com.imanol.gymmanagement.feature.client.presentation.ClientDetailViewModel
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint(ComponentActivity::class)
@@ -20,6 +22,8 @@ class MainActivity : Hilt_MainActivity() {
     private val exerciseCategoriesViewModel: ExerciseCategoriesViewModel by viewModels()
     private val exercisesViewModel: ExercisesViewModel by viewModels()
     private val exerciseDetailViewModel: ExerciseDetailViewModel by viewModels()
+    private val clientsViewModel: ClientsViewModel by viewModels()
+    private val clientDetailViewModel: ClientDetailViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -31,6 +35,8 @@ class MainActivity : Hilt_MainActivity() {
                 exerciseCategoriesViewModel,
                 exercisesViewModel,
                 exerciseDetailViewModel,
+                clientsViewModel,
+                clientDetailViewModel,
             )
         }
     }

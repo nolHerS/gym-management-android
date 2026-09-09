@@ -21,6 +21,7 @@ import com.imanol.gymmanagement.core.designsystem.component.GymLoading
 fun HomeScreen(
     viewModel: HomeViewModel,
     onNavigateToCategories: () -> Unit,
+    onNavigateToClients: () -> Unit,
     onLogout: () -> Unit,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -43,6 +44,12 @@ fun HomeScreen(
                 Text(text = "Bienvenido, ${state.user.name}")
                 Text(text = "Email: ${state.user.email}")
                 Text(text = "Rol: ${state.user.role}")
+                if (state.user.role == "TRAINER") {
+                    GymButton(
+                        text = "Mis clientes",
+                        onClick = onNavigateToClients,
+                    )
+                }
             }
             is HomeUiState.Error -> {
                 GymErrorMessage(message = state.message)

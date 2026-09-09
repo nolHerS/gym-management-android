@@ -9,4 +9,7 @@ data class UserResponse(
     val lastName: String = "",
     val email: String = "",
     val role: String = "",
+    val active: Boolean = false,
+    val createdAt: String? = null,
+    val updatedAt: String? = null,
 )

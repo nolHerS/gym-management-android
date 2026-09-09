@@ -21,6 +21,10 @@ import com.imanol.gymmanagement.feature.exercise.presentation.ExercisesScreen
 import com.imanol.gymmanagement.feature.exercise.presentation.ExercisesViewModel
 import com.imanol.gymmanagement.feature.exercise.presentation.ExerciseDetailScreen
 import com.imanol.gymmanagement.feature.exercise.presentation.ExerciseDetailViewModel
+import com.imanol.gymmanagement.feature.client.presentation.ClientsScreen
+import com.imanol.gymmanagement.feature.client.presentation.ClientsViewModel
+import com.imanol.gymmanagement.feature.client.presentation.ClientDetailScreen
+import com.imanol.gymmanagement.feature.client.presentation.ClientDetailViewModel
 
 @Composable
 fun GymNavHost(
@@ -29,6 +33,8 @@ fun GymNavHost(
     exerciseCategoriesViewModel: ExerciseCategoriesViewModel,
     exercisesViewModel: ExercisesViewModel,
     exerciseDetailViewModel: ExerciseDetailViewModel,
+    clientsViewModel: ClientsViewModel,
+    clientDetailViewModel: ClientDetailViewModel,
 ) {
     val navController = rememberNavController()
     val sessionState by loginViewModel.sessionState.collectAsStateWithLifecycle()
@@ -77,6 +83,7 @@ fun GymNavHost(
                 HomeScreen(
                     viewModel = homeViewModel,
                     onNavigateToCategories = { navController.navigate(ExerciseCategories) },
+                    onNavigateToClients = { navController.navigate(Clients) },
                     onLogout = {
                         loginViewModel.logout()
                         navController.navigate(Login) {
@@ -120,6 +127,33 @@ fun GymNavHost(
                 ExerciseDetailScreen(
                     exerciseId = route.exerciseId,
                     viewModel = exerciseDetailViewModel,
+                    onUnauthorized = {
+                        loginViewModel.logout()
+                        navController.navigate(Login) {
+                            popUpTo(MainGraph) { inclusive = true }
+                        }
+                    },
+                )
+            }
+            composable<Clients> {
+                ClientsScreen(
+                    viewModel = clientsViewModel,
+                    onClientSelected = { clientId ->
+                        navController.navigate(ClientDetail(clientId))
+                    },
+                    onUnauthorized = {
+                        loginViewModel.logout()
+                        navController.navigate(Login) {
+                            popUpTo(MainGraph) { inclusive = true }
+                        }
+                    },
+                )
+            }
+            composable<ClientDetail> { backStackEntry ->
+                val route = backStackEntry.toRoute<ClientDetail>()
+                ClientDetailScreen(
+                    clientId = route.clientId,
+                    viewModel = clientDetailViewModel,
                     onUnauthorized = {
                         loginViewModel.logout()
                         navController.navigate(Login) {

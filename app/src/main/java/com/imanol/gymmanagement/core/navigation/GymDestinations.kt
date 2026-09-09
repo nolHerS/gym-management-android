@@ -25,3 +25,9 @@ data class Exercises(val categoryId: Long)
 
 @Serializable
 data class ExerciseDetail(val exerciseId: Long)
+
+@Serializable
+data object Clients
+
+@Serializable
+data class ClientDetail(val clientId: Long)

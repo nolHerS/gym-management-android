@@ -7,6 +7,8 @@ import com.imanol.gymmanagement.feature.home.presentation.HomeViewModel
 import com.imanol.gymmanagement.feature.exercise.presentation.ExerciseCategoriesViewModel
 import com.imanol.gymmanagement.feature.exercise.presentation.ExercisesViewModel
 import com.imanol.gymmanagement.feature.exercise.presentation.ExerciseDetailViewModel
+import com.imanol.gymmanagement.feature.client.presentation.ClientsViewModel
+import com.imanol.gymmanagement.feature.client.presentation.ClientDetailViewModel
 
 @Composable
 fun GymApp(
@@ -15,6 +17,8 @@ fun GymApp(
     exerciseCategoriesViewModel: ExerciseCategoriesViewModel,
     exercisesViewModel: ExercisesViewModel,
     exerciseDetailViewModel: ExerciseDetailViewModel,
+    clientsViewModel: ClientsViewModel,
+    clientDetailViewModel: ClientDetailViewModel,
 ) {
     GymTheme {
         GymNavHost(
@@ -23,6 +27,8 @@ fun GymApp(
             exerciseCategoriesViewModel,
             exercisesViewModel,
             exerciseDetailViewModel,
+            clientsViewModel,
+            clientDetailViewModel,
         )
     }
 }
