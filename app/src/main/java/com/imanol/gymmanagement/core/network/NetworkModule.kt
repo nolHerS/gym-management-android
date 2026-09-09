@@ -5,6 +5,7 @@ import com.imanol.gymmanagement.BuildConfig
 import com.imanol.gymmanagement.feature.auth.data.remote.AuthApi
 import com.imanol.gymmanagement.feature.exercise.data.remote.ExerciseApi
 import com.imanol.gymmanagement.feature.client.data.remote.ClientApi
+import com.imanol.gymmanagement.feature.workout.data.remote.WorkoutApi
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -73,6 +74,11 @@ object NetworkModule {
     @Singleton
     fun provideClientApi(retrofit: Retrofit): ClientApi =
         retrofit.create(ClientApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideWorkoutApi(retrofit: Retrofit): WorkoutApi =
+        retrofit.create(WorkoutApi::class.java)
 }
 
 private object DebugNetworkLoggingInterceptor : Interceptor {

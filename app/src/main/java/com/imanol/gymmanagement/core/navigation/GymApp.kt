@@ -9,6 +9,8 @@ import com.imanol.gymmanagement.feature.exercise.presentation.ExercisesViewModel
 import com.imanol.gymmanagement.feature.exercise.presentation.ExerciseDetailViewModel
 import com.imanol.gymmanagement.feature.client.presentation.ClientsViewModel
 import com.imanol.gymmanagement.feature.client.presentation.ClientDetailViewModel
+import com.imanol.gymmanagement.feature.workout.presentation.WorkoutTemplatesViewModel
+import com.imanol.gymmanagement.feature.workout.presentation.WorkoutTemplateDetailViewModel
 
 @Composable
 fun GymApp(
@@ -19,6 +21,8 @@ fun GymApp(
     exerciseDetailViewModel: ExerciseDetailViewModel,
     clientsViewModel: ClientsViewModel,
     clientDetailViewModel: ClientDetailViewModel,
+    workoutTemplatesViewModel: WorkoutTemplatesViewModel,
+    workoutTemplateDetailViewModel: WorkoutTemplateDetailViewModel,
 ) {
     GymTheme {
         GymNavHost(
@@ -29,6 +33,8 @@ fun GymApp(
             exerciseDetailViewModel,
             clientsViewModel,
             clientDetailViewModel,
+            workoutTemplatesViewModel,
+            workoutTemplateDetailViewModel,
         )
     }
 }

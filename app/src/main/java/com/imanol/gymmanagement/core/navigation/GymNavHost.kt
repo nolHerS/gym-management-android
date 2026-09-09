@@ -25,6 +25,11 @@ import com.imanol.gymmanagement.feature.client.presentation.ClientsScreen
 import com.imanol.gymmanagement.feature.client.presentation.ClientsViewModel
 import com.imanol.gymmanagement.feature.client.presentation.ClientDetailScreen
 import com.imanol.gymmanagement.feature.client.presentation.ClientDetailViewModel
+import com.imanol.gymmanagement.feature.workout.presentation.WorkoutTemplatesScreen
+import com.imanol.gymmanagement.feature.workout.presentation.WorkoutTemplatesViewModel
+import com.imanol.gymmanagement.feature.workout.presentation.WorkoutTemplateDetailScreen
+import com.imanol.gymmanagement.feature.workout.presentation.WorkoutTemplateDetailViewModel
+import com.imanol.gymmanagement.feature.workout.presentation.WorkoutTemplateFormScreen
 
 @Composable
 fun GymNavHost(
@@ -35,6 +40,8 @@ fun GymNavHost(
     exerciseDetailViewModel: ExerciseDetailViewModel,
     clientsViewModel: ClientsViewModel,
     clientDetailViewModel: ClientDetailViewModel,
+    workoutTemplatesViewModel: WorkoutTemplatesViewModel,
+    workoutTemplateDetailViewModel: WorkoutTemplateDetailViewModel,
 ) {
     val navController = rememberNavController()
     val sessionState by loginViewModel.sessionState.collectAsStateWithLifecycle()
@@ -84,6 +91,9 @@ fun GymNavHost(
                     viewModel = homeViewModel,
                     onNavigateToCategories = { navController.navigate(ExerciseCategories) },
                     onNavigateToClients = { navController.navigate(Clients) },
+                    onNavigateToWorkoutTemplates = {
+                        navController.navigate(WorkoutTemplates)
+                    },
                     onLogout = {
                         loginViewModel.logout()
                         navController.navigate(Login) {
@@ -154,6 +164,56 @@ fun GymNavHost(
                 ClientDetailScreen(
                     clientId = route.clientId,
                     viewModel = clientDetailViewModel,
+                    onUnauthorized = {
+                        loginViewModel.logout()
+                        navController.navigate(Login) {
+                            popUpTo(MainGraph) { inclusive = true }
+                        }
+                    },
+                )
+            }
+            composable<WorkoutTemplates> {
+                WorkoutTemplatesScreen(
+                    viewModel = workoutTemplatesViewModel,
+                    onTemplateSelected = { templateId ->
+                        navController.navigate(WorkoutTemplateDetail(templateId))
+                    },
+                    onCreateTemplate = {
+                        navController.navigate(WorkoutTemplateForm())
+                    },
+                    onEditTemplate = { templateId ->
+                        navController.navigate(WorkoutTemplateForm(templateId))
+                    },
+                    onUnauthorized = {
+                        loginViewModel.logout()
+                        navController.navigate(Login) {
+                            popUpTo(MainGraph) { inclusive = true }
+                        }
+                    },
+                )
+            }
+            composable<WorkoutTemplateDetail> { backStackEntry ->
+                val route = backStackEntry.toRoute<WorkoutTemplateDetail>()
+                WorkoutTemplateDetailScreen(
+                    templateId = route.templateId,
+                    viewModel = workoutTemplateDetailViewModel,
+                    onEditTemplate = { templateId ->
+                        navController.navigate(WorkoutTemplateForm(templateId))
+                    },
+                    onUnauthorized = {
+                        loginViewModel.logout()
+                        navController.navigate(Login) {
+                            popUpTo(MainGraph) { inclusive = true }
+                        }
+                    },
+                )
+            }
+            composable<WorkoutTemplateForm> { backStackEntry ->
+                val route = backStackEntry.toRoute<WorkoutTemplateForm>()
+                WorkoutTemplateFormScreen(
+                    templateId = route.templateId,
+                    viewModel = workoutTemplatesViewModel,
+                    onSaved = { navController.popBackStack() },
                     onUnauthorized = {
                         loginViewModel.logout()
                         navController.navigate(Login) {

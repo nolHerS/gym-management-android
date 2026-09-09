@@ -22,6 +22,7 @@ fun HomeScreen(
     viewModel: HomeViewModel,
     onNavigateToCategories: () -> Unit,
     onNavigateToClients: () -> Unit,
+    onNavigateToWorkoutTemplates: () -> Unit,
     onLogout: () -> Unit,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -48,6 +49,10 @@ fun HomeScreen(
                     GymButton(
                         text = "Mis clientes",
                         onClick = onNavigateToClients,
+                    )
+                    GymButton(
+                        text = "Plantillas de entrenamiento",
+                        onClick = onNavigateToWorkoutTemplates,
                     )
                 }
             }

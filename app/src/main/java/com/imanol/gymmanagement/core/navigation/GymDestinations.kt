@@ -31,3 +31,12 @@ data object Clients
 
 @Serializable
 data class ClientDetail(val clientId: Long)
+
+@Serializable
+data object WorkoutTemplates
+
+@Serializable
+data class WorkoutTemplateDetail(val templateId: Long)
+
+@Serializable
+data class WorkoutTemplateForm(val templateId: Long? = null)
