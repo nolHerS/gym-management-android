@@ -8,15 +8,28 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
 import com.imanol.gymmanagement.feature.auth.presentation.LoginScreen
 import com.imanol.gymmanagement.feature.auth.presentation.SessionState
 import com.imanol.gymmanagement.feature.auth.presentation.LoginViewModel
 import com.imanol.gymmanagement.feature.auth.presentation.SplashScreen
 import com.imanol.gymmanagement.feature.home.presentation.HomeScreen
 import com.imanol.gymmanagement.feature.home.presentation.HomeViewModel
+import com.imanol.gymmanagement.feature.exercise.presentation.ExerciseCategoriesScreen
+import com.imanol.gymmanagement.feature.exercise.presentation.ExerciseCategoriesViewModel
+import com.imanol.gymmanagement.feature.exercise.presentation.ExercisesScreen
+import com.imanol.gymmanagement.feature.exercise.presentation.ExercisesViewModel
+import com.imanol.gymmanagement.feature.exercise.presentation.ExerciseDetailScreen
+import com.imanol.gymmanagement.feature.exercise.presentation.ExerciseDetailViewModel
 
 @Composable
-fun GymNavHost(loginViewModel: LoginViewModel, homeViewModel: HomeViewModel) {
+fun GymNavHost(
+    loginViewModel: LoginViewModel,
+    homeViewModel: HomeViewModel,
+    exerciseCategoriesViewModel: ExerciseCategoriesViewModel,
+    exercisesViewModel: ExercisesViewModel,
+    exerciseDetailViewModel: ExerciseDetailViewModel,
+) {
     val navController = rememberNavController()
     val sessionState by loginViewModel.sessionState.collectAsStateWithLifecycle()
 
@@ -63,10 +76,54 @@ fun GymNavHost(loginViewModel: LoginViewModel, homeViewModel: HomeViewModel) {
             composable<Home> {
                 HomeScreen(
                     viewModel = homeViewModel,
+                    onNavigateToCategories = { navController.navigate(ExerciseCategories) },
                     onLogout = {
                         loginViewModel.logout()
                         navController.navigate(Login) {
                             popUpTo(Home) { inclusive = true }
+                        }
+                    },
+                )
+            }
+            composable<ExerciseCategories> {
+                ExerciseCategoriesScreen(
+                    viewModel = exerciseCategoriesViewModel,
+                    onCategorySelected = { categoryId ->
+                        navController.navigate(Exercises(categoryId))
+                    },
+                    onUnauthorized = {
+                        loginViewModel.logout()
+                        navController.navigate(Login) {
+                            popUpTo(MainGraph) { inclusive = true }
+                        }
+                    },
+                )
+            }
+            composable<Exercises> { backStackEntry ->
+                val route = backStackEntry.toRoute<Exercises>()
+                ExercisesScreen(
+                    categoryId = route.categoryId,
+                    viewModel = exercisesViewModel,
+                    onExerciseSelected = { exerciseId ->
+                        navController.navigate(ExerciseDetail(exerciseId))
+                    },
+                    onUnauthorized = {
+                        loginViewModel.logout()
+                        navController.navigate(Login) {
+                            popUpTo(MainGraph) { inclusive = true }
+                        }
+                    },
+                )
+            }
+            composable<ExerciseDetail> { backStackEntry ->
+                val route = backStackEntry.toRoute<ExerciseDetail>()
+                ExerciseDetailScreen(
+                    exerciseId = route.exerciseId,
+                    viewModel = exerciseDetailViewModel,
+                    onUnauthorized = {
+                        loginViewModel.logout()
+                        navController.navigate(Login) {
+                            popUpTo(MainGraph) { inclusive = true }
                         }
                     },
                 )

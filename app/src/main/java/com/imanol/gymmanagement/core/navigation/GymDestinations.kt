@@ -16,3 +16,12 @@ data object Login
 
 @Serializable
 data object Home
+
+@Serializable
+data object ExerciseCategories
+
+@Serializable
+data class Exercises(val categoryId: Long)
+
+@Serializable
+data class ExerciseDetail(val exerciseId: Long)

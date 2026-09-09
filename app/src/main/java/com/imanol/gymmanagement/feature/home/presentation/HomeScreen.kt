@@ -13,12 +13,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.imanol.gymmanagement.core.designsystem.component.GymButton
 import com.imanol.gymmanagement.core.designsystem.component.GymErrorMessage
 import com.imanol.gymmanagement.core.designsystem.component.GymLoading
 
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel,
+    onNavigateToCategories: () -> Unit,
     onLogout: () -> Unit,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -50,6 +52,10 @@ fun HomeScreen(
             }
             HomeUiState.Unauthorized -> Unit
         }
+        GymButton(
+            text = "Categorías de ejercicios",
+            onClick = onNavigateToCategories,
+        )
         Button(onClick = onLogout) {
             Text(text = "Cerrar sesión")
         }

@@ -3,6 +3,7 @@ package com.imanol.gymmanagement.core.network
 import android.util.Log
 import com.imanol.gymmanagement.BuildConfig
 import com.imanol.gymmanagement.feature.auth.data.remote.AuthApi
+import com.imanol.gymmanagement.feature.exercise.data.remote.ExerciseApi
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -61,6 +62,11 @@ object NetworkModule {
     @Singleton
     fun provideAuthApi(retrofit: Retrofit): AuthApi =
         retrofit.create(AuthApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideExerciseApi(retrofit: Retrofit): ExerciseApi =
+        retrofit.create(ExerciseApi::class.java)
 }
 
 private object DebugNetworkLoggingInterceptor : Interceptor {
