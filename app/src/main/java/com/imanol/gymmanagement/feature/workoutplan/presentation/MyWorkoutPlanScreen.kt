@@ -22,10 +22,9 @@ import com.imanol.gymmanagement.core.designsystem.component.GymErrorMessage
 import com.imanol.gymmanagement.core.designsystem.component.GymLoading
 import com.imanol.gymmanagement.feature.workoutplan.domain.WorkoutPlan
 import com.imanol.gymmanagement.feature.workoutplan.domain.WorkoutPlanExercise
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-
-private val weekFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
+import java.text.ParsePosition
+import java.text.SimpleDateFormat
+import java.util.Locale
 private val dayNames = mapOf(
     1 to "LUNES",
     2 to "MARTES",
@@ -95,14 +94,14 @@ fun MyWorkoutPlanScreen(
 
 @Composable
 private fun WeekNavigation(
-    weekStart: LocalDate,
+    weekStart: String,
     onPrevious: () -> Unit,
     onNext: () -> Unit,
     onCurrent: () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
-            text = "Semana del ${weekStart.format(weekFormatter)}",
+            text = "Semana del ${formatWeekStart(weekStart)}",
             style = MaterialTheme.typography.titleMedium,
         )
         Row(
@@ -115,6 +114,14 @@ private fun WeekNavigation(
         }
     }
 }
+
+private fun formatWeekStart(value: String): String =
+    SimpleDateFormat("yyyy-MM-dd", Locale.ROOT).let { parser ->
+        val position = ParsePosition(0)
+        val date = requireNotNull(parser.parse(value, position)) { "Invalid ISO date: $value" }
+        require(position.index == value.length) { "Invalid ISO date: $value" }
+        SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(date)
+    }
 
 @Composable
 private fun ExercisePlanCard(exercise: WorkoutPlanExercise) {

@@ -8,8 +8,6 @@ import com.imanol.gymmanagement.feature.workoutplan.domain.WorkoutPlanDayRequest
 import com.imanol.gymmanagement.feature.workoutplan.domain.WorkoutPlanExerciseRequest
 import com.imanol.gymmanagement.feature.workoutplan.domain.WorkoutPlanRepository
 import java.io.IOException
-import java.time.DayOfWeek
-import java.time.LocalDate
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import okhttp3.ResponseBody.Companion.toResponseBody
@@ -25,7 +23,7 @@ class MyWorkoutPlanViewModelTest {
         val repository = TestRepository()
         val viewModel = viewModel(repository)
 
-        viewModel.loadWeek(LocalDate.of(2026, 9, 9))
+        viewModel.loadWeek("2026-09-09")
         assertEquals("2026-09-07", repository.requestedWeeks.last())
 
         viewModel.previousWeek()
@@ -41,23 +39,22 @@ class MyWorkoutPlanViewModelTest {
         val viewModel = viewModel(repository)
 
         repository.result = emptyList()
-        viewModel.loadWeek(LocalDate.of(2026, 9, 7))
+        viewModel.loadWeek("2026-09-07")
         assertTrue(viewModel.uiState.value is MyWorkoutPlanUiState.Empty)
 
         repository.failure = IOException()
-        viewModel.loadWeek(LocalDate.of(2026, 9, 7))
+        viewModel.loadWeek("2026-09-07")
         assertTrue(viewModel.uiState.value is MyWorkoutPlanUiState.Error)
 
         repository.failure = HttpException(Response.error<Unit>(403, "Forbidden".toResponseBody()))
-        viewModel.loadWeek(LocalDate.of(2026, 9, 7))
+        viewModel.loadWeek("2026-09-07")
         assertTrue(viewModel.uiState.value is MyWorkoutPlanUiState.Unauthorized)
     }
 
     @Test
     fun mondayHelperKeepsMondayAndMovesSundayBack() {
-        assertEquals(LocalDate.of(2026, 9, 7), LocalDate.of(2026, 9, 7).mondayOfWeek())
-        assertEquals(LocalDate.of(2026, 9, 7), LocalDate.of(2026, 9, 13).mondayOfWeek())
-        assertEquals(DayOfWeek.MONDAY, LocalDate.of(2026, 9, 13).mondayOfWeek().dayOfWeek)
+        assertEquals("2026-09-07", "2026-09-07".mondayOfWeek())
+        assertEquals("2026-09-07", "2026-09-13".mondayOfWeek())
     }
 
     private fun viewModel(repository: TestRepository) = MyWorkoutPlanViewModel(

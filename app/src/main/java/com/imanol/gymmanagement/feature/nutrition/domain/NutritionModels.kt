@@ -1,7 +1,9 @@
 package com.imanol.gymmanagement.feature.nutrition.domain
 
 import java.math.BigDecimal
-import java.time.LocalDate
+import java.text.ParsePosition
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 object NutritionPlanStatus {
     const val ACTIVE = "ACTIVE"
@@ -78,14 +80,14 @@ data class NutritionPlanInput(
     val meals: List<MealInput>,
 ) {
     fun validationError(requireStatus: Boolean = status != null): String? {
-        val start = runCatching { LocalDate.parse(startDate) }.getOrNull()
+        val start = parseIsoDate(startDate)
             ?: return "La fecha de inicio debe tener formato AAAA-MM-DD."
-        val end = endDate?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+        val end = endDate?.let(::parseIsoDate)
         return when {
             name.isBlank() || name.length > 150 ->
                 "El nombre es obligatorio y admite hasta 150 caracteres."
             endDate != null && end == null -> "La fecha de fin debe tener formato AAAA-MM-DD."
-            end != null && end.isBefore(start) -> "La fecha de fin no puede ser anterior al inicio."
+            end != null && end.before(start) -> "La fecha de fin no puede ser anterior al inicio."
             requireStatus && status !in NutritionPlanStatus.values -> "El estado del plan no es válido."
             meals.isEmpty() -> "Añade al menos una comida."
             meals.any {
@@ -100,8 +102,16 @@ data class NutritionPlanInput(
             } -> "Revisa alimento, cantidad, unidad y orden."
             else -> null
         }
+
     }
 }
+
+private fun parseIsoDate(value: String) =
+    SimpleDateFormat("yyyy-MM-dd", Locale.ROOT).apply { isLenient = false }.let { format ->
+        ParsePosition(0).let { position ->
+            format.parse(value, position)?.takeIf { position.index == value.length }
+        }
+    }
 
 data class FoodInput(
     val name: String,

@@ -6,9 +6,10 @@ import com.imanol.gymmanagement.feature.workoutplan.domain.GetMyWorkoutWeekUseCa
 import com.imanol.gymmanagement.feature.workoutplan.domain.WorkoutPlan
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.IOException
-import java.time.DayOfWeek
-import java.time.LocalDate
-import java.time.temporal.TemporalAdjusters
+import java.text.ParsePosition
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,26 +19,31 @@ import kotlinx.coroutines.launch
 import retrofit2.HttpException
 
 sealed interface MyWorkoutPlanUiState {
-    val weekStart: LocalDate
+    val weekStart: String
 
-    data class Loading(override val weekStart: LocalDate) : MyWorkoutPlanUiState
+    data class Loading(override val weekStart: String) : MyWorkoutPlanUiState
     data class Success(
-        override val weekStart: LocalDate,
+        override val weekStart: String,
         val plans: List<WorkoutPlan>,
     ) : MyWorkoutPlanUiState
-    data class Empty(override val weekStart: LocalDate) : MyWorkoutPlanUiState
-    data class Error(override val weekStart: LocalDate, val message: String) : MyWorkoutPlanUiState
-    data class Unauthorized(override val weekStart: LocalDate) : MyWorkoutPlanUiState
+    data class Empty(override val weekStart: String) : MyWorkoutPlanUiState
+    data class Error(override val weekStart: String, val message: String) : MyWorkoutPlanUiState
+    data class Unauthorized(override val weekStart: String) : MyWorkoutPlanUiState
 }
 
-fun LocalDate.mondayOfWeek(): LocalDate =
-    with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+fun String.mondayOfWeek(): String {
+    val calendar = parseIsoDate(this)
+    val dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
+    val daysSinceMonday = if (dayOfWeek == Calendar.SUNDAY) 6 else dayOfWeek - Calendar.MONDAY
+    calendar.add(Calendar.DAY_OF_MONTH, -daysSinceMonday)
+    return formatIsoDate(calendar)
+}
 
 @HiltViewModel
 class MyWorkoutPlanViewModel @Inject constructor(
     private val getMyWorkoutWeek: GetMyWorkoutWeekUseCase,
 ) : ViewModel() {
-    private val initialWeek = LocalDate.now().mondayOfWeek()
+    private val initialWeek = formatIsoDate(Calendar.getInstance()).mondayOfWeek()
     private val _uiState = MutableStateFlow<MyWorkoutPlanUiState>(
         MyWorkoutPlanUiState.Loading(initialWeek),
     )
@@ -56,7 +62,7 @@ class MyWorkoutPlanViewModel @Inject constructor(
         loadWeek(initialWeek)
     }
 
-    fun loadWeek(weekStart: LocalDate) {
+    fun loadWeek(weekStart: String) {
         val monday = weekStart.mondayOfWeek()
         _uiState.value = MyWorkoutPlanUiState.Loading(monday)
         (providedScope ?: viewModelScope).launch {
@@ -90,14 +96,29 @@ class MyWorkoutPlanViewModel @Inject constructor(
     }
 
     fun previousWeek() {
-        loadWeek(_uiState.value.weekStart.minusWeeks(1))
+        loadWeek(shiftWeek(_uiState.value.weekStart, -1))
     }
 
     fun nextWeek() {
-        loadWeek(_uiState.value.weekStart.plusWeeks(1))
+        loadWeek(shiftWeek(_uiState.value.weekStart, 1))
     }
 
     fun thisWeek() {
         loadCurrentWeek()
     }
 }
+
+private fun shiftWeek(value: String, weeks: Int): String =
+    parseIsoDate(value).apply { add(Calendar.WEEK_OF_YEAR, weeks) }.let(::formatIsoDate).mondayOfWeek()
+
+private fun parseIsoDate(value: String): Calendar =
+    SimpleDateFormat("yyyy-MM-dd", Locale.ROOT).apply { isLenient = false }.let { format ->
+        ParsePosition(0).let { position ->
+            requireNotNull(format.parse(value, position)) { "Invalid ISO date: $value" }
+            require(position.index == value.length) { "Invalid ISO date: $value" }
+            Calendar.getInstance().apply { time = format.parse(value)!! }
+        }
+    }
+
+private fun formatIsoDate(calendar: Calendar): String =
+    SimpleDateFormat("yyyy-MM-dd", Locale.ROOT).format(calendar.time)
