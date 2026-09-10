@@ -52,11 +52,12 @@ class ExercisesViewModel @Inject constructor(
                     ExercisesUiState.Success(exercises)
                 }
             } catch (exception: HttpException) {
-                _uiState.value = if (exception.code() == 401 || exception.code() == 403) {
+                _uiState.value = if (exception.code() == 401) {
                     ExercisesUiState.Unauthorized
                 } else {
                     ExercisesUiState.Error(
-                        "No se pudieron cargar los ejercicios. Inténtalo de nuevo.",
+                        if (exception.code() == 403) "Acceso denegado."
+                        else "No se pudieron cargar los ejercicios. Inténtalo de nuevo.",
                     )
                 }
             } catch (_: IOException) {

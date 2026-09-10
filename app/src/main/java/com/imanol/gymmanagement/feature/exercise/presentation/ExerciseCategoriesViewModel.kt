@@ -48,11 +48,12 @@ class ExerciseCategoriesViewModel @Inject constructor(
                 _uiState.value =
                     ExerciseCategoriesUiState.Success(getExerciseCategories())
             } catch (exception: HttpException) {
-                _uiState.value = if (exception.code() == 401 || exception.code() == 403) {
+                _uiState.value = if (exception.code() == 401) {
                     ExerciseCategoriesUiState.Unauthorized
                 } else {
                     ExerciseCategoriesUiState.Error(
-                        "No se pudieron cargar las categorías. Inténtalo de nuevo.",
+                        if (exception.code() == 403) "Acceso denegado."
+                        else "No se pudieron cargar las categorías. Inténtalo de nuevo.",
                     )
                 }
             } catch (_: IOException) {

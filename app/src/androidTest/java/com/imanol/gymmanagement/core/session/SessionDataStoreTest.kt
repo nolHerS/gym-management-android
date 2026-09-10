@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonObject
@@ -25,11 +26,13 @@ import java.security.KeyStore
 class SessionDataStoreTest {
     private lateinit var context: Context
     private lateinit var dataStore: SessionDataStore
+    private lateinit var sessionManager: SessionManager
 
     @Before
     fun setUp() = runBlocking {
         context = ApplicationProvider.getApplicationContext()
         dataStore = SessionDataStore(context, AndroidSessionCipher())
+        sessionManager = SessionManager(dataStore)
         dataStore.clearSession()
     }
 
@@ -159,6 +162,31 @@ class SessionDataStoreTest {
 
         assertNull(dataStore.getValidSession())
         assertTrue(context.sessionDataStore.data.first().asMap().isEmpty())
+    }
+
+    @Test
+    fun sessionManagerRefreshesValidAndExpiredSessions() = runBlocking {
+        sessionManager.saveSession("manager-token", "Bearer", 60_000)
+        assertNotNull(sessionManager.refresh())
+        assertEquals(SessionStatus.Authenticated, sessionManager.status.value)
+
+        dataStore.clearSession()
+        sessionManager.saveSession("short-lived", "Bearer", 1)
+        delay(10)
+        assertNull(sessionManager.refresh())
+        assertEquals(SessionStatus.Unauthenticated, sessionManager.status.value)
+    }
+
+    @Test
+    fun sessionManagerLogoutAndInvalidateClearSession() = runBlocking {
+        sessionManager.saveSession("manager-token", "Bearer", 60_000)
+        sessionManager.invalidate()
+        assertNull(dataStore.getValidSession())
+
+        sessionManager.saveSession("manager-token-2", "Bearer", 60_000)
+        sessionManager.logout()
+        assertNull(dataStore.getValidSession())
+        assertEquals(SessionStatus.Unauthenticated, sessionManager.status.value)
     }
 
     private suspend fun assertInvalidSave(token: String, tokenType: String, expiresIn: Long) {

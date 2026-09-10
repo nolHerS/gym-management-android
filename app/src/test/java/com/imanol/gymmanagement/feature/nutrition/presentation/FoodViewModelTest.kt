@@ -76,7 +76,7 @@ class FoodViewModelTest {
         viewModel.loadFood(1L)
 
         assertEquals(
-            NutritionFailure.UNAUTHORIZED,
+            NutritionFailure.FORBIDDEN,
             (viewModel.detail.value as FoodDetailUiState.Failure).problem.failure,
         )
     }

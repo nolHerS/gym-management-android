@@ -10,6 +10,7 @@ enum class NutritionFailure {
     CONFLICT,
     NETWORK,
     UNKNOWN,
+    FORBIDDEN,
 }
 
 data class NutritionProblem(
@@ -24,7 +25,8 @@ internal fun Throwable.toNutritionProblem(defaultMessage: String): NutritionProb
     )
     is HttpException -> when (code()) {
         400 -> NutritionProblem(NutritionFailure.VALIDATION, "Revisa los datos introducidos.")
-        401, 403 -> NutritionProblem(NutritionFailure.UNAUTHORIZED, "No autorizado.")
+        401 -> NutritionProblem(NutritionFailure.UNAUTHORIZED, "La sesión ya no es válida.")
+        403 -> NutritionProblem(NutritionFailure.FORBIDDEN, "Acceso denegado.")
         404 -> NutritionProblem(NutritionFailure.NOT_FOUND, "No se encontró el recurso.")
         409 -> NutritionProblem(NutritionFailure.CONFLICT, "La operación entra en conflicto con el estado actual.")
         else -> NutritionProblem(NutritionFailure.UNKNOWN, defaultMessage)

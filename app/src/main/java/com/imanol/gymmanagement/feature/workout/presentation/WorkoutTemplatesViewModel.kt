@@ -90,7 +90,8 @@ class WorkoutTemplatesViewModel @Inject constructor(
                     WorkoutTemplatesUiState.Unauthorized
                 } else {
                     WorkoutTemplatesUiState.Error(
-                        "No se pudieron cargar las plantillas. Inténtalo de nuevo.",
+                        if (exception.code() == 403) "Acceso denegado."
+                        else "No se pudieron cargar las plantillas. Inténtalo de nuevo.",
                     )
                 }
             } catch (_: IOException) {
@@ -119,7 +120,8 @@ class WorkoutTemplatesViewModel @Inject constructor(
                     errorMessage = if (exception.isUnauthorized()) {
                         "No autorizado."
                     } else {
-                        "No se pudo cargar la plantilla. Inténtalo de nuevo."
+                        if (exception.code() == 403) "Acceso denegado."
+                        else "No se pudo cargar la plantilla. Inténtalo de nuevo."
                     },
                 )
             } catch (_: IOException) {
@@ -168,7 +170,8 @@ class WorkoutTemplatesViewModel @Inject constructor(
                     errorMessage = if (exception.isUnauthorized()) {
                         "No autorizado."
                     } else {
-                        "No se pudo guardar la plantilla. Inténtalo de nuevo."
+                        if (exception.code() == 403) "Acceso denegado."
+                        else "No se pudo guardar la plantilla. Inténtalo de nuevo."
                     },
                 )
             } catch (_: IOException) {
@@ -194,7 +197,8 @@ class WorkoutTemplatesViewModel @Inject constructor(
                     WorkoutTemplatesUiState.Unauthorized
                 } else {
                     WorkoutTemplatesUiState.Error(
-                        "No se pudo actualizar el estado. Inténtalo de nuevo.",
+                        if (exception.code() == 403) "Acceso denegado."
+                        else "No se pudo actualizar el estado. Inténtalo de nuevo.",
                     )
                 }
             } catch (_: IOException) {
@@ -208,4 +212,4 @@ class WorkoutTemplatesViewModel @Inject constructor(
     private fun scope(): CoroutineScope = providedScope ?: viewModelScope
 }
 
-private fun HttpException.isUnauthorized(): Boolean = code() == 401 || code() == 403
+private fun HttpException.isUnauthorized(): Boolean = code() == 401

@@ -33,10 +33,13 @@ class HomeViewModel @Inject constructor(
             try {
                 _uiState.value = HomeUiState.Success(getCurrentUser())
             } catch (exception: HttpException) {
-                _uiState.value = if (exception.code() == 401 || exception.code() == 403) {
+                _uiState.value = if (exception.code() == 401) {
                     HomeUiState.Unauthorized
                 } else {
-                    HomeUiState.Error("No se pudo cargar el usuario. Inténtalo de nuevo.")
+                    HomeUiState.Error(
+                        if (exception.code() == 403) "Acceso denegado."
+                        else "No se pudo cargar el usuario. Inténtalo de nuevo.",
+                    )
                 }
             } catch (_: IOException) {
                 _uiState.value = HomeUiState.Error(

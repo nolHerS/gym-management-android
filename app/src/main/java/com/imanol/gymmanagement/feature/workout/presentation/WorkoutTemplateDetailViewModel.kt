@@ -94,7 +94,8 @@ class WorkoutTemplateDetailViewModel @Inject constructor(
                     WorkoutTemplateDetailUiState.Unauthorized
                 } else {
                     WorkoutTemplateDetailUiState.Error(
-                        "No se pudo cargar la plantilla. Inténtalo de nuevo.",
+                        if (exception.code() == 403) "Acceso denegado."
+                        else "No se pudo cargar la plantilla. Inténtalo de nuevo.",
                     )
                 }
             } catch (_: IOException) {
@@ -184,7 +185,11 @@ class WorkoutTemplateDetailViewModel @Inject constructor(
                 if (exception.isUnauthorized()) {
                     _uiState.value = WorkoutTemplateDetailUiState.Unauthorized
                 } else {
-                    _actionError.value = "No se pudo actualizar la plantilla. Inténtalo de nuevo."
+                    _actionError.value = if (exception.code() == 403) {
+                        "Acceso denegado."
+                    } else {
+                        "No se pudo actualizar la plantilla. Inténtalo de nuevo."
+                    }
                 }
             } catch (_: IOException) {
                 _actionError.value = "No se pudo conectar con el servidor. Inténtalo de nuevo."
@@ -195,4 +200,4 @@ class WorkoutTemplateDetailViewModel @Inject constructor(
     private fun scope(): CoroutineScope = providedScope ?: viewModelScope
 }
 
-private fun HttpException.isUnauthorized(): Boolean = code() == 401 || code() == 403
+private fun HttpException.isUnauthorized(): Boolean = code() == 401

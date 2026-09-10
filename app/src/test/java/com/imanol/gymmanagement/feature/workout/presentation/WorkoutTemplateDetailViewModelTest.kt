@@ -53,7 +53,7 @@ class WorkoutTemplateDetailViewModelTest {
     @Test
     fun unauthorizedResponseProducesUnauthorizedState() {
         val viewModel = viewModelFor(
-            HttpException(Response.error<Unit>(403, "Forbidden".toResponseBody())),
+            HttpException(Response.error<Unit>(401, "Unauthorized".toResponseBody())),
         )
 
         viewModel.loadDetail(1L)

@@ -46,7 +46,7 @@ class MyWorkoutPlanViewModelTest {
         viewModel.loadWeek("2026-09-07")
         assertTrue(viewModel.uiState.value is MyWorkoutPlanUiState.Error)
 
-        repository.failure = HttpException(Response.error<Unit>(403, "Forbidden".toResponseBody()))
+        repository.failure = HttpException(Response.error<Unit>(401, "Unauthorized".toResponseBody()))
         viewModel.loadWeek("2026-09-07")
         assertTrue(viewModel.uiState.value is MyWorkoutPlanUiState.Unauthorized)
     }

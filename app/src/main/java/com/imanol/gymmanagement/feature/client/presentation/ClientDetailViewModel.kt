@@ -48,11 +48,12 @@ class ClientDetailViewModel @Inject constructor(
             try {
                 _uiState.value = ClientDetailUiState.Success(getClientDetail(clientId))
             } catch (exception: HttpException) {
-                _uiState.value = if (exception.code() == 401 || exception.code() == 403) {
+                _uiState.value = if (exception.code() == 401) {
                     ClientDetailUiState.Unauthorized
                 } else {
                     ClientDetailUiState.Error(
-                        "No se pudo cargar el cliente. Inténtalo de nuevo.",
+                        if (exception.code() == 403) "Acceso denegado."
+                        else "No se pudo cargar el cliente. Inténtalo de nuevo.",
                     )
                 }
             } catch (_: IOException) {

@@ -33,10 +33,6 @@ fun HomeScreen(
     LaunchedEffect(Unit) {
         viewModel.loadUser()
     }
-    LaunchedEffect(uiState) {
-        if (uiState is HomeUiState.Unauthorized) onLogout()
-    }
-
     Column(
         modifier = Modifier.fillMaxSize().padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,

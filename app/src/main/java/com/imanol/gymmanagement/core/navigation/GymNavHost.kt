@@ -8,6 +8,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.toRoute
 import com.imanol.gymmanagement.feature.auth.presentation.LoginScreen
 import com.imanol.gymmanagement.feature.auth.presentation.SessionState
@@ -34,6 +35,13 @@ import com.imanol.gymmanagement.feature.workout.presentation.WorkoutTemplateForm
 import com.imanol.gymmanagement.feature.workoutplan.presentation.*
 import com.imanol.gymmanagement.feature.nutrition.presentation.*
 
+private fun isAuthenticationRoute(route: String?): Boolean =
+    route != null && setOf(
+        AuthGraph::class.qualifiedName,
+        Splash::class.qualifiedName,
+        Login::class.qualifiedName,
+    ).filterNotNull().any { route.startsWith(it) }
+
 @Composable
 fun GymNavHost(
     loginViewModel: LoginViewModel,
@@ -54,6 +62,31 @@ fun GymNavHost(
     val navController = rememberNavController()
     val sessionState by loginViewModel.sessionState.collectAsStateWithLifecycle()
     val homeState by homeViewModel.uiState.collectAsStateWithLifecycle()
+    val backStackEntry by navController.currentBackStackEntryAsState()
+
+    LaunchedEffect(sessionState, backStackEntry) {
+        if (
+            sessionState == SessionState.Unauthenticated &&
+            backStackEntry != null &&
+            !isAuthenticationRoute(backStackEntry?.destination?.route)
+        ) {
+            navController.navigate(Login) {
+                popUpTo(MainGraph) { inclusive = true }
+                launchSingleTop = true
+            }
+        }
+    }
+
+    LaunchedEffect(homeState, backStackEntry) {
+        val role = (homeState as? HomeUiState.Success)?.user?.role
+        val destinationRoute = backStackEntry?.destination?.route
+        if (destinationRoute != null && role != null && !RoleGuard.canAccess(role, destinationRoute)) {
+            navController.navigate(Home) {
+                popUpTo(MainGraph)
+                launchSingleTop = true
+            }
+        }
+    }
 
     NavHost(
         navController = navController,

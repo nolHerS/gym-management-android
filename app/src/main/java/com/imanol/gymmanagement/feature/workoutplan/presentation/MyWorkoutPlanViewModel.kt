@@ -74,12 +74,13 @@ class MyWorkoutPlanViewModel @Inject constructor(
                     MyWorkoutPlanUiState.Success(monday, plans)
                 }
             } catch (exception: HttpException) {
-                _uiState.value = if (exception.code() == 401 || exception.code() == 403) {
+                _uiState.value = if (exception.code() == 401) {
                     MyWorkoutPlanUiState.Unauthorized(monday)
                 } else {
                     MyWorkoutPlanUiState.Error(
                         monday,
-                        "No se pudo cargar tu planificación. Inténtalo de nuevo.",
+                        if (exception.code() == 403) "Acceso denegado."
+                        else "No se pudo cargar tu planificación. Inténtalo de nuevo.",
                     )
                 }
             } catch (_: IOException) {

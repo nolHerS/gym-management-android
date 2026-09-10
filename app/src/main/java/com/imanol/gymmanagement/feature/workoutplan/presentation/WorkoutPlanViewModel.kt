@@ -60,17 +60,20 @@ class WorkoutPlanViewModel @Inject constructor(
     fun load(clientId: Long) = scope.launch {
         _plans.value = WorkoutPlansState.Loading
         try { _plans.value = getPlans(clientId).let { if (it.isEmpty()) WorkoutPlansState.Empty else WorkoutPlansState.Success(it) } }
-        catch (e: HttpException) { _plans.value = if (e.code() == 401 || e.code() == 403) WorkoutPlansState.Unauthorized else WorkoutPlansState.Error("No se pudieron cargar los planes.") }
+        catch (e: HttpException) {
+            _plans.value = if (e.code() == 401) WorkoutPlansState.Unauthorized
+            else WorkoutPlansState.Error(if (e.code() == 403) "Acceso denegado." else "No se pudieron cargar los planes.")
+        }
         catch (_: IOException) { _plans.value = WorkoutPlansState.Error("No se pudo conectar con el servidor.") }
     }
     fun loadDetail(id: Long) = scope.launch {
         _detail.value = WorkoutPlanDetailState.Loading
         try { _detail.value = WorkoutPlanDetailState.Success(getPlan(id)) }
         catch (e: HttpException) {
-            _detail.value = if (e.code() == 401 || e.code() == 403) {
+            _detail.value = if (e.code() == 401) {
                 WorkoutPlanDetailState.Unauthorized
             } else {
-                WorkoutPlanDetailState.Error("No se pudo cargar el plan.")
+                WorkoutPlanDetailState.Error(if (e.code() == 403) "Acceso denegado." else "No se pudo cargar el plan.")
             }
         }
         catch (_: Exception) { _detail.value = WorkoutPlanDetailState.Error("No se pudo cargar el plan.") }

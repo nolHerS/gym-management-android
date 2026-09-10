@@ -46,7 +46,7 @@ class ClientsViewModelTest {
     @Test
     fun unauthorizedResponseProducesUnauthorizedState() {
         val viewModel = viewModelFor {
-            throw HttpException(Response.error<Unit>(403, "Forbidden".toResponseBody()))
+            throw HttpException(Response.error<Unit>(401, "Unauthorized".toResponseBody()))
         }
 
         viewModel.loadClients()
