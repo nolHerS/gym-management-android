@@ -52,7 +52,7 @@ object NetworkModule {
     @Singleton
     fun provideRetrofit(json: Json, okHttpClient: OkHttpClient): Retrofit =
         Retrofit.Builder()
-            .baseUrl(BuildConfig.BASE_URL)
+            .baseUrl(validatedBaseUrl())
             .client(okHttpClient)
             .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
             .build()
@@ -91,6 +91,13 @@ object NetworkModule {
     @Singleton
     fun provideNutritionApi(retrofit: Retrofit): NutritionApi =
         retrofit.create(NutritionApi::class.java)
+
+    private fun validatedBaseUrl(): String {
+        check(BuildConfig.DEBUG || BuildConfig.BASE_URL.startsWith("https://")) {
+            "Release BASE_URL must use HTTPS"
+        }
+        return BuildConfig.BASE_URL
+    }
 }
 
 private object DebugNetworkLoggingInterceptor : Interceptor {
