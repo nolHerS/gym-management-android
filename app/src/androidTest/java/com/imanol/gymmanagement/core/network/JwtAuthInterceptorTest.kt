@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.imanol.gymmanagement.core.session.SessionDataStore
+import com.imanol.gymmanagement.core.session.AndroidSessionCipher
 import com.imanol.gymmanagement.feature.auth.data.remote.AuthApi
 import dagger.Lazy
 import kotlinx.coroutines.runBlocking
@@ -28,7 +29,7 @@ class JwtAuthInterceptorTest {
     @Before
     fun setUp() {
         val context = ApplicationProvider.getApplicationContext<Context>()
-        sessionDataStore = SessionDataStore(context)
+        sessionDataStore = SessionDataStore(context, AndroidSessionCipher())
         server = MockWebServer()
         server.start()
     }

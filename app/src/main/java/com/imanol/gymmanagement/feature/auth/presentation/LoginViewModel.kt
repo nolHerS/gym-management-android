@@ -2,6 +2,7 @@ package com.imanol.gymmanagement.feature.auth.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.imanol.gymmanagement.core.session.InvalidSessionException
 import com.imanol.gymmanagement.core.session.SessionDataStore
 import com.imanol.gymmanagement.feature.auth.data.remote.AuthApi
 import com.imanol.gymmanagement.feature.auth.data.remote.LoginRequest
@@ -97,6 +98,8 @@ class LoginViewModel @Inject constructor(
             } catch (_: HttpException) {
                 showGenericError()
             } catch (_: IOException) {
+                showGenericError()
+            } catch (_: InvalidSessionException) {
                 showGenericError()
             }
         }
