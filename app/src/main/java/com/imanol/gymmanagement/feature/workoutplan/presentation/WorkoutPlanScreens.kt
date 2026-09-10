@@ -49,13 +49,29 @@ fun WorkoutPlansScreen(clientId: Long, viewModel: WorkoutPlanViewModel, onPlanSe
 fun CreateWorkoutPlanScreen(clientId: Long, viewModel: WorkoutPlanViewModel, onCreated: (Long) -> Unit) {
     val state by viewModel.createState.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) { viewModel.prepareCreate() }
-    Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Crear plan", style = MaterialTheme.typography.headlineSmall)
-        OutlinedTextField(state.startDate, viewModel::setStartDate, label = { Text("Inicio (AAAA-MM-DD)") })
-        OutlinedTextField(state.endDate, viewModel::setEndDate, label = { Text("Fin (opcional)") })
-        Text("Plantilla", style = MaterialTheme.typography.titleMedium)
-        TextButton(onClick = viewModel::selectFromScratch) { Text("Crear desde cero") }
-        state.templates.forEach { template ->
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp)
+            .imePadding(),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        item {
+            Text("Crear plan", style = MaterialTheme.typography.headlineSmall)
+            OutlinedTextField(
+                state.startDate,
+                viewModel::setStartDate,
+                label = { Text("Inicio (AAAA-MM-DD)") },
+            )
+            OutlinedTextField(
+                state.endDate,
+                viewModel::setEndDate,
+                label = { Text("Fin (opcional)") },
+            )
+            Text("Plantilla", style = MaterialTheme.typography.titleMedium)
+            TextButton(onClick = viewModel::selectFromScratch) { Text("Crear desde cero") }
+        }
+        items(state.templates, key = { "template-${it.id}" }) { template ->
             OutlinedButton(
                 onClick = { viewModel.selectTemplate(template) },
                 modifier = Modifier.fillMaxWidth(),
@@ -64,61 +80,66 @@ fun CreateWorkoutPlanScreen(clientId: Long, viewModel: WorkoutPlanViewModel, onC
             }
         }
         state.templateDetail?.exercises?.forEach { templateExercise ->
-            val request = state.drafts[templateExercise.id] ?: return@forEach
-            Text(templateExercise.exercise.name, style = MaterialTheme.typography.titleSmall)
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                (1..7).forEach { day ->
-                    FilterChip(
-                        selected = state.assignments[templateExercise.id] == day,
-                        onClick = { viewModel.assignExercise(templateExercise.id, day) },
-                        label = { Text(day.toString()) },
-                    )
+            state.drafts[templateExercise.id]?.let { request ->
+                item(key = "exercise-${templateExercise.id}") {
+                    Text(templateExercise.exercise.name, style = MaterialTheme.typography.titleSmall)
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        (1..7).forEach { day ->
+                            FilterChip(
+                                selected = state.assignments[templateExercise.id] == day,
+                                onClick = { viewModel.assignExercise(templateExercise.id, day) },
+                                label = { Text(day.toString()) },
+                            )
+                        }
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        OutlinedTextField(
+                            value = request.sets.toString(),
+                            onValueChange = { value ->
+                                value.toIntOrNull()?.let {
+                                    viewModel.updateExercise(
+                                        templateExercise.id,
+                                        request.copy(sets = it),
+                                    )
+                                }
+                            },
+                            label = { Text("Series") },
+                            modifier = Modifier.weight(1f),
+                        )
+                        OutlinedTextField(
+                            value = request.repetitions.toString(),
+                            onValueChange = { value ->
+                                value.toIntOrNull()?.let {
+                                    viewModel.updateExercise(
+                                        templateExercise.id,
+                                        request.copy(repetitions = it),
+                                    )
+                                }
+                            },
+                            label = { Text("Reps") },
+                            modifier = Modifier.weight(1f),
+                        )
+                        OutlinedTextField(
+                            value = request.restSeconds.toString(),
+                            onValueChange = { value ->
+                                value.toIntOrNull()?.let {
+                                    viewModel.updateExercise(
+                                        templateExercise.id,
+                                        request.copy(restSeconds = it),
+                                    )
+                                }
+                            },
+                            label = { Text("Descanso") },
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
                 }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                OutlinedTextField(
-                    value = request.sets.toString(),
-                    onValueChange = { value ->
-                        value.toIntOrNull()?.let {
-                            viewModel.updateExercise(
-                                templateExercise.id,
-                                request.copy(sets = it),
-                            )
-                        }
-                    },
-                    label = { Text("Series") },
-                    modifier = Modifier.weight(1f),
-                )
-                OutlinedTextField(
-                    value = request.repetitions.toString(),
-                    onValueChange = { value ->
-                        value.toIntOrNull()?.let {
-                            viewModel.updateExercise(
-                                templateExercise.id,
-                                request.copy(repetitions = it),
-                            )
-                        }
-                    },
-                    label = { Text("Reps") },
-                    modifier = Modifier.weight(1f),
-                )
-                OutlinedTextField(
-                    value = request.restSeconds.toString(),
-                    onValueChange = { value ->
-                        value.toIntOrNull()?.let {
-                            viewModel.updateExercise(
-                                templateExercise.id,
-                                request.copy(restSeconds = it),
-                            )
-                        }
-                    },
-                    label = { Text("Descanso") },
-                    modifier = Modifier.weight(1f),
-                )
-            }
         }
-        state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        Button(enabled = !state.saving, onClick = { viewModel.create(clientId, onCreated) }) { Text("Guardar") }
+        item {
+            state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            Button(enabled = !state.saving, onClick = { viewModel.create(clientId, onCreated) }) { Text("Guardar") }
+        }
     }
 }
 
