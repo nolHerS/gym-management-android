@@ -15,6 +15,11 @@ import com.imanol.gymmanagement.feature.client.presentation.ClientsViewModel
 import com.imanol.gymmanagement.feature.client.presentation.ClientDetailViewModel
 import com.imanol.gymmanagement.feature.workout.presentation.WorkoutTemplatesViewModel
 import com.imanol.gymmanagement.feature.workout.presentation.WorkoutTemplateDetailViewModel
+import com.imanol.gymmanagement.feature.workoutplan.presentation.WorkoutPlanViewModel
+import com.imanol.gymmanagement.feature.workoutplan.presentation.MyWorkoutPlanViewModel
+import com.imanol.gymmanagement.feature.nutrition.presentation.FoodViewModel
+import com.imanol.gymmanagement.feature.nutrition.presentation.MyNutritionViewModel
+import com.imanol.gymmanagement.feature.nutrition.presentation.NutritionPlanViewModel
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint(ComponentActivity::class)
@@ -28,6 +33,11 @@ class MainActivity : Hilt_MainActivity() {
     private val clientDetailViewModel: ClientDetailViewModel by viewModels()
     private val workoutTemplatesViewModel: WorkoutTemplatesViewModel by viewModels()
     private val workoutTemplateDetailViewModel: WorkoutTemplateDetailViewModel by viewModels()
+    private val workoutPlanViewModel: WorkoutPlanViewModel by viewModels()
+    private val myWorkoutPlanViewModel: MyWorkoutPlanViewModel by viewModels()
+    private val nutritionPlanViewModel: NutritionPlanViewModel by viewModels()
+    private val foodViewModel: FoodViewModel by viewModels()
+    private val myNutritionViewModel: MyNutritionViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -43,6 +53,11 @@ class MainActivity : Hilt_MainActivity() {
                 clientDetailViewModel,
                 workoutTemplatesViewModel,
                 workoutTemplateDetailViewModel,
+                workoutPlanViewModel,
+                myWorkoutPlanViewModel,
+                nutritionPlanViewModel,
+                foodViewModel,
+                myNutritionViewModel,
             )
         }
     }

@@ -23,6 +23,9 @@ fun HomeScreen(
     onNavigateToCategories: () -> Unit,
     onNavigateToClients: () -> Unit,
     onNavigateToWorkoutTemplates: () -> Unit,
+    onNavigateToMyWorkoutPlan: () -> Unit,
+    onNavigateToFoods: () -> Unit,
+    onNavigateToMyNutrition: () -> Unit,
     onLogout: () -> Unit,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -45,6 +48,20 @@ fun HomeScreen(
                 Text(text = "Bienvenido, ${state.user.name}")
                 Text(text = "Email: ${state.user.email}")
                 Text(text = "Rol: ${state.user.role}")
+                if (state.user.role == "CLIENT") {
+                    GymButton(
+                        text = "Mi planificación",
+                        onClick = onNavigateToMyWorkoutPlan,
+                    )
+                    GymButton(
+                        text = "Mi nutrición",
+                        onClick = onNavigateToMyNutrition,
+                    )
+                    GymButton(
+                        text = "Catálogo de alimentos",
+                        onClick = onNavigateToFoods,
+                    )
+                }
                 if (state.user.role == "TRAINER") {
                     GymButton(
                         text = "Mis clientes",
@@ -53,6 +70,10 @@ fun HomeScreen(
                     GymButton(
                         text = "Plantillas de entrenamiento",
                         onClick = onNavigateToWorkoutTemplates,
+                    )
+                    GymButton(
+                        text = "Catálogo de alimentos",
+                        onClick = onNavigateToFoods,
                     )
                 }
             }

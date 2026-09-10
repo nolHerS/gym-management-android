@@ -15,6 +15,7 @@ import com.imanol.gymmanagement.feature.auth.presentation.LoginViewModel
 import com.imanol.gymmanagement.feature.auth.presentation.SplashScreen
 import com.imanol.gymmanagement.feature.home.presentation.HomeScreen
 import com.imanol.gymmanagement.feature.home.presentation.HomeViewModel
+import com.imanol.gymmanagement.feature.home.presentation.HomeUiState
 import com.imanol.gymmanagement.feature.exercise.presentation.ExerciseCategoriesScreen
 import com.imanol.gymmanagement.feature.exercise.presentation.ExerciseCategoriesViewModel
 import com.imanol.gymmanagement.feature.exercise.presentation.ExercisesScreen
@@ -30,6 +31,8 @@ import com.imanol.gymmanagement.feature.workout.presentation.WorkoutTemplatesVie
 import com.imanol.gymmanagement.feature.workout.presentation.WorkoutTemplateDetailScreen
 import com.imanol.gymmanagement.feature.workout.presentation.WorkoutTemplateDetailViewModel
 import com.imanol.gymmanagement.feature.workout.presentation.WorkoutTemplateFormScreen
+import com.imanol.gymmanagement.feature.workoutplan.presentation.*
+import com.imanol.gymmanagement.feature.nutrition.presentation.*
 
 @Composable
 fun GymNavHost(
@@ -42,9 +45,15 @@ fun GymNavHost(
     clientDetailViewModel: ClientDetailViewModel,
     workoutTemplatesViewModel: WorkoutTemplatesViewModel,
     workoutTemplateDetailViewModel: WorkoutTemplateDetailViewModel,
+    workoutPlanViewModel: WorkoutPlanViewModel,
+    myWorkoutPlanViewModel: MyWorkoutPlanViewModel,
+    nutritionPlanViewModel: NutritionPlanViewModel,
+    foodViewModel: FoodViewModel,
+    myNutritionViewModel: MyNutritionViewModel,
 ) {
     val navController = rememberNavController()
     val sessionState by loginViewModel.sessionState.collectAsStateWithLifecycle()
+    val homeState by homeViewModel.uiState.collectAsStateWithLifecycle()
 
     NavHost(
         navController = navController,
@@ -94,10 +103,26 @@ fun GymNavHost(
                     onNavigateToWorkoutTemplates = {
                         navController.navigate(WorkoutTemplates)
                     },
+                    onNavigateToMyWorkoutPlan = {
+                        navController.navigate(MyWorkoutPlan)
+                    },
+                    onNavigateToFoods = { navController.navigate(Foods) },
+                    onNavigateToMyNutrition = { navController.navigate(MyNutrition) },
                     onLogout = {
                         loginViewModel.logout()
                         navController.navigate(Login) {
                             popUpTo(Home) { inclusive = true }
+                        }
+                    },
+                )
+            }
+            composable<MyWorkoutPlan> {
+                MyWorkoutPlanScreen(
+                    viewModel = myWorkoutPlanViewModel,
+                    onUnauthorized = {
+                        loginViewModel.logout()
+                        navController.navigate(Login) {
+                            popUpTo(MainGraph) { inclusive = true }
                         }
                     },
                 )
@@ -164,6 +189,164 @@ fun GymNavHost(
                 ClientDetailScreen(
                     clientId = route.clientId,
                     viewModel = clientDetailViewModel,
+                    onWorkoutPlans = { navController.navigate(WorkoutPlans(it)) },
+                    onNutritionPlans = { navController.navigate(NutritionPlans(it)) },
+                    onUnauthorized = {
+                        loginViewModel.logout()
+                        navController.navigate(Login) {
+                            popUpTo(MainGraph) { inclusive = true }
+                        }
+                    },
+                )
+            }
+            composable<WorkoutPlans> { entry ->
+                val route = entry.toRoute<WorkoutPlans>()
+                WorkoutPlansScreen(route.clientId, workoutPlanViewModel, { navController.navigate(WorkoutPlanDetail(it)) }, {
+                    loginViewModel.logout(); navController.navigate(Login) { popUpTo(MainGraph) { inclusive = true } }
+                }, { navController.navigate(CreateWorkoutPlan(route.clientId)) })
+            }
+            composable<CreateWorkoutPlan> { entry ->
+                val route = entry.toRoute<CreateWorkoutPlan>()
+                CreateWorkoutPlanScreen(route.clientId, workoutPlanViewModel) { navController.navigate(WorkoutPlanDetail(it)) }
+            }
+            composable<WorkoutPlanDetail> { entry ->
+                val route = entry.toRoute<WorkoutPlanDetail>()
+                WorkoutPlanDetailScreen(route.planId, workoutPlanViewModel) {
+                    loginViewModel.logout(); navController.navigate(Login) { popUpTo(MainGraph) { inclusive = true } }
+                }
+            }
+            composable<NutritionPlans> { entry ->
+                val route = entry.toRoute<NutritionPlans>()
+                NutritionPlansScreen(
+                    clientId = route.clientId,
+                    viewModel = nutritionPlanViewModel,
+                    canManage = (homeState as? HomeUiState.Success)?.user?.role == "TRAINER",
+                    onPlanSelected = { navController.navigate(NutritionPlanDetail(it)) },
+                    onCreate = { navController.navigate(NutritionPlanForm(route.clientId)) },
+                    onUnauthorized = {
+                        loginViewModel.logout()
+                        navController.navigate(Login) {
+                            popUpTo(MainGraph) { inclusive = true }
+                        }
+                    },
+                    onAccessDenied = {
+                        navController.navigate(Home) {
+                            popUpTo(MainGraph)
+                            launchSingleTop = true
+                        }
+                    },
+                )
+            }
+            composable<NutritionPlanDetail> { entry ->
+                val route = entry.toRoute<NutritionPlanDetail>()
+                NutritionPlanDetailScreen(
+                    planId = route.planId,
+                    viewModel = nutritionPlanViewModel,
+                    canManage = (homeState as? HomeUiState.Success)?.user?.role == "TRAINER",
+                    onEdit = { clientId, planId ->
+                        navController.navigate(NutritionPlanForm(clientId, planId))
+                    },
+                    onUnauthorized = {
+                        loginViewModel.logout()
+                        navController.navigate(Login) {
+                            popUpTo(MainGraph) { inclusive = true }
+                        }
+                    },
+                    onAccessDenied = {
+                        navController.navigate(Home) {
+                            popUpTo(MainGraph)
+                            launchSingleTop = true
+                        }
+                    },
+                )
+            }
+            composable<NutritionPlanForm> { entry ->
+                val route = entry.toRoute<NutritionPlanForm>()
+                NutritionPlanFormScreen(
+                    clientId = route.clientId,
+                    planId = route.planId,
+                    viewModel = nutritionPlanViewModel,
+                    canManage = (homeState as? HomeUiState.Success)?.user?.role == "TRAINER",
+                    onSaved = { navController.navigate(NutritionPlanDetail(it)) },
+                    onUnauthorized = {
+                        loginViewModel.logout()
+                        navController.navigate(Login) {
+                            popUpTo(MainGraph) { inclusive = true }
+                        }
+                    },
+                    onAccessDenied = {
+                        navController.navigate(Home) {
+                            popUpTo(MainGraph)
+                            launchSingleTop = true
+                        }
+                    },
+                )
+            }
+            composable<Foods> {
+                val canManage =
+                    (homeState as? HomeUiState.Success)?.user?.role == "TRAINER"
+                FoodsScreen(
+                    viewModel = foodViewModel,
+                    canManage = canManage,
+                    onFoodSelected = { navController.navigate(FoodDetail(it)) },
+                    onCreate = { navController.navigate(FoodForm()) },
+                    onEdit = { navController.navigate(FoodForm(it)) },
+                    onUnauthorized = {
+                        loginViewModel.logout()
+                        navController.navigate(Login) {
+                            popUpTo(MainGraph) { inclusive = true }
+                        }
+                    },
+                )
+            }
+            composable<FoodDetail> { entry ->
+                val route = entry.toRoute<FoodDetail>()
+                val canManage =
+                    (homeState as? HomeUiState.Success)?.user?.role == "TRAINER"
+                FoodDetailScreen(
+                    foodId = route.foodId,
+                    viewModel = foodViewModel,
+                    canManage = canManage,
+                    onEdit = { navController.navigate(FoodForm(it)) },
+                    onUnauthorized = {
+                        loginViewModel.logout()
+                        navController.navigate(Login) {
+                            popUpTo(MainGraph) { inclusive = true }
+                        }
+                    },
+                )
+            }
+            composable<FoodForm> { entry ->
+                val route = entry.toRoute<FoodForm>()
+                FoodFormScreen(
+                    foodId = route.foodId,
+                    viewModel = foodViewModel,
+                    onSaved = { navController.navigate(FoodDetail(it)) },
+                    onUnauthorized = {
+                        loginViewModel.logout()
+                        navController.navigate(Login) {
+                            popUpTo(MainGraph) { inclusive = true }
+                        }
+                    },
+                )
+            }
+            composable<MyNutrition> {
+                MyNutritionScreen(
+                    viewModel = myNutritionViewModel,
+                    onPlanSelected = { navController.navigate(MyNutritionPlan(it)) },
+                    onUnauthorized = {
+                        loginViewModel.logout()
+                        navController.navigate(Login) {
+                            popUpTo(MainGraph) { inclusive = true }
+                        }
+                    },
+                )
+            }
+            composable<MyNutritionPlan> { entry ->
+                val route = entry.toRoute<MyNutritionPlan>()
+                MyNutritionPlanScreen(
+                    planId = route.planId,
+                    viewModel = myNutritionViewModel,
                     onUnauthorized = {
                         loginViewModel.logout()
                         navController.navigate(Login) {

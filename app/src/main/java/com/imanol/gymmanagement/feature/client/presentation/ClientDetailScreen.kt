@@ -21,6 +21,8 @@ fun ClientDetailScreen(
     clientId: Long,
     viewModel: ClientDetailViewModel,
     onUnauthorized: () -> Unit,
+    onWorkoutPlans: (Long) -> Unit = {},
+    onNutritionPlans: (Long) -> Unit = {},
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -45,6 +47,8 @@ fun ClientDetailScreen(
                 Text(text = "Email: ${state.client.email}")
                 Text(text = "Rol: ${state.client.role}")
                 Text(text = if (state.client.active) "Activo" else "Inactivo")
+                GymButton(text = "Planes de entrenamiento", onClick = { onWorkoutPlans(clientId) })
+                GymButton(text = "Planes nutricionales", onClick = { onNutritionPlans(clientId) })
             }
             is ClientDetailUiState.Error -> {
                 GymErrorMessage(message = state.message)
