@@ -54,6 +54,17 @@ class ClientsViewModelTest {
         assertEquals(ClientsUiState.Unauthorized, viewModel.uiState.value)
     }
 
+    @Test
+    fun conflictResponseProducesErrorState() {
+        val viewModel = viewModelFor {
+            throw HttpException(Response.error<Unit>(409, "Conflict".toResponseBody()))
+        }
+
+        viewModel.loadClients()
+
+        assertTrue(viewModel.uiState.value is ClientsUiState.Error)
+    }
+
     private fun viewModelFor(
         result: suspend () -> List<Client>,
     ): ClientsViewModel =

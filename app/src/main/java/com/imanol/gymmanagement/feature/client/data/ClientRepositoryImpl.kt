@@ -1,6 +1,7 @@
 package com.imanol.gymmanagement.feature.client.data
 
 import com.imanol.gymmanagement.feature.auth.domain.AuthRepository
+import com.imanol.gymmanagement.core.network.networkCall
 import com.imanol.gymmanagement.feature.client.data.remote.ClientApi
 import com.imanol.gymmanagement.feature.client.data.remote.toClient
 import com.imanol.gymmanagement.feature.client.domain.Client
@@ -11,18 +12,19 @@ class ClientRepositoryImpl @Inject constructor(
     private val clientApi: ClientApi,
     private val authRepository: AuthRepository,
 ) : ClientRepository {
-    override suspend fun getTrainerClients(): List<Client> {
+    override suspend fun getTrainerClients(): List<Client> = networkCall {
         val trainerId = authRepository.getCurrentUser().id
         val relationships = clientApi.getTrainerClients(trainerId).data
             ?: error("Trainer clients response did not contain data")
 
-        return relationships.map { relationship ->
+        relationships.map { relationship ->
             clientApi.getClientById(relationship.clientId).data?.toClient()
                 ?: error("Client response did not contain data")
         }
     }
 
-    override suspend fun getClientDetail(clientId: Long): Client =
+    override suspend fun getClientDetail(clientId: Long): Client = networkCall {
         clientApi.getClientById(clientId).data?.toClient()
             ?: error("Client response did not contain data")
+    }
 }

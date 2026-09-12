@@ -1,6 +1,7 @@
 package com.imanol.gymmanagement.feature.auth.data
 
 import com.imanol.gymmanagement.feature.auth.data.remote.AuthApi
+import com.imanol.gymmanagement.core.network.networkCall
 import com.imanol.gymmanagement.feature.auth.domain.AuthRepository
 import com.imanol.gymmanagement.feature.auth.domain.User
 import javax.inject.Inject
@@ -8,7 +9,7 @@ import javax.inject.Inject
 class AuthRepositoryImpl @Inject constructor(
     private val authApi: AuthApi,
 ) : AuthRepository {
-    override suspend fun getCurrentUser(): User =
+    override suspend fun getCurrentUser(): User = networkCall {
         authApi.getCurrentUser().data?.let { response ->
             User(
                 id = response.id,
@@ -17,4 +18,5 @@ class AuthRepositoryImpl @Inject constructor(
                 role = response.role,
             )
         } ?: error("Current user response did not contain data")
+    }
 }

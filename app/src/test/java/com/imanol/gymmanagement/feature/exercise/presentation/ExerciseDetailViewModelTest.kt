@@ -5,6 +5,7 @@ import com.imanol.gymmanagement.feature.exercise.domain.ExerciseCategory
 import com.imanol.gymmanagement.feature.exercise.domain.ExerciseRepository
 import com.imanol.gymmanagement.feature.exercise.domain.GetExerciseDetailUseCase
 import java.io.IOException
+import kotlinx.serialization.SerializationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import okhttp3.ResponseBody.Companion.toResponseBody
@@ -44,6 +45,26 @@ class ExerciseDetailViewModelTest {
         viewModel.loadExercise(1L)
 
         assertEquals(ExerciseDetailUiState.Unauthorized, viewModel.uiState.value)
+    }
+
+    @Test
+    fun notFoundResponseProducesErrorState() {
+        val viewModel = viewModelFor(
+            HttpException(Response.error<Unit>(404, "Not found".toResponseBody())),
+        )
+
+        viewModel.loadExercise(1L)
+
+        assertTrue(viewModel.uiState.value is ExerciseDetailUiState.Error)
+    }
+
+    @Test
+    fun serializationFailureProducesErrorState() {
+        val viewModel = viewModelFor(SerializationException("invalid json"))
+
+        viewModel.loadExercise(1L)
+
+        assertTrue(viewModel.uiState.value is ExerciseDetailUiState.Error)
     }
 
     private fun viewModelFor(exception: Exception?): ExerciseDetailViewModel =

@@ -33,6 +33,21 @@ class WorkoutPlanViewModelTest {
     }
 
     @Test
+    fun listConflictProducesErrorState() {
+        val viewModel = viewModel {
+            throw HttpException(Response.error<Unit>(409, "Conflict".toResponseBody()))
+        }
+
+        viewModel.load(2L)
+
+        assertTrue(viewModel.plans.value is WorkoutPlansState.Error)
+        assertEquals(
+            "El recurso ha cambiado o existe un conflicto. Vuelve a cargar e inténtalo de nuevo.",
+            (viewModel.plans.value as WorkoutPlansState.Error).message,
+        )
+    }
+
+    @Test
     fun createViewModelRejectsMissingDatesAndExercises() {
         val viewModel = viewModel { emptyList() }
         viewModel.prepareCreate()

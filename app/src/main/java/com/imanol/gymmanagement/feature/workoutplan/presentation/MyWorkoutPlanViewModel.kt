@@ -5,18 +5,19 @@ import androidx.lifecycle.viewModelScope
 import com.imanol.gymmanagement.feature.workoutplan.domain.GetMyWorkoutWeekUseCase
 import com.imanol.gymmanagement.feature.workoutplan.domain.WorkoutPlan
 import dagger.hilt.android.lifecycle.HiltViewModel
-import java.io.IOException
 import java.text.ParsePosition
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 import javax.inject.Inject
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import retrofit2.HttpException
+import com.imanol.gymmanagement.core.domain.AppException
+import com.imanol.gymmanagement.core.network.toAppException
 
 sealed interface MyWorkoutPlanUiState {
     val weekStart: String
@@ -73,21 +74,24 @@ class MyWorkoutPlanViewModel @Inject constructor(
                 } else {
                     MyWorkoutPlanUiState.Success(monday, plans)
                 }
-            } catch (exception: HttpException) {
-                _uiState.value = if (exception.code() == 401) {
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (throwable: Throwable) {
+                val exception = throwable.toAppException()
+                _uiState.value = if (exception is AppException.Unauthorized) {
                     MyWorkoutPlanUiState.Unauthorized(monday)
+                } else if (exception is AppException.Network) {
+                    MyWorkoutPlanUiState.Error(
+                        monday,
+                        "No se pudo conectar con el servidor. Inténtalo de nuevo.",
+                    )
                 } else {
                     MyWorkoutPlanUiState.Error(
                         monday,
-                        if (exception.code() == 403) "Acceso denegado."
+                        if (exception is AppException.Forbidden) "Acceso denegado."
                         else "No se pudo cargar tu planificación. Inténtalo de nuevo.",
                     )
                 }
-            } catch (_: IOException) {
-                _uiState.value = MyWorkoutPlanUiState.Error(
-                    monday,
-                    "No se pudo conectar con el servidor. Inténtalo de nuevo.",
-                )
             }
         }
     }

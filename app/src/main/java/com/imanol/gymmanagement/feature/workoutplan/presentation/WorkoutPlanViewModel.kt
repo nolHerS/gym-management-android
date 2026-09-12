@@ -5,12 +5,13 @@ import androidx.lifecycle.viewModelScope
 import com.imanol.gymmanagement.feature.workout.domain.*
 import com.imanol.gymmanagement.feature.workoutplan.domain.*
 import dagger.hilt.android.lifecycle.HiltViewModel
-import java.io.IOException
 import javax.inject.Inject
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import retrofit2.HttpException
+import com.imanol.gymmanagement.core.domain.AppException
+import com.imanol.gymmanagement.core.network.toAppException
 
 sealed interface WorkoutPlansState {
     data object Loading : WorkoutPlansState
@@ -60,30 +61,50 @@ class WorkoutPlanViewModel @Inject constructor(
     fun load(clientId: Long) = scope.launch {
         _plans.value = WorkoutPlansState.Loading
         try { _plans.value = getPlans(clientId).let { if (it.isEmpty()) WorkoutPlansState.Empty else WorkoutPlansState.Success(it) } }
-        catch (e: HttpException) {
-            _plans.value = if (e.code() == 401) WorkoutPlansState.Unauthorized
-            else WorkoutPlansState.Error(if (e.code() == 403) "Acceso denegado." else "No se pudieron cargar los planes.")
+        catch (exception: CancellationException) { throw exception }
+        catch (throwable: Throwable) {
+            val e = throwable.toAppException()
+            _plans.value = if (e is AppException.Unauthorized) WorkoutPlansState.Unauthorized
+            else WorkoutPlansState.Error(
+                when {
+                    e is AppException.Network -> "No se pudo conectar con el servidor."
+                    e is AppException.Forbidden -> "Acceso denegado."
+                    e is AppException.Conflict -> "El recurso ha cambiado o existe un conflicto. Vuelve a cargar e inténtalo de nuevo."
+                    else -> "No se pudieron cargar los planes."
+                },
+            )
         }
-        catch (_: IOException) { _plans.value = WorkoutPlansState.Error("No se pudo conectar con el servidor.") }
     }
     fun loadDetail(id: Long) = scope.launch {
         _detail.value = WorkoutPlanDetailState.Loading
         try { _detail.value = WorkoutPlanDetailState.Success(getPlan(id)) }
-        catch (e: HttpException) {
-            _detail.value = if (e.code() == 401) {
+        catch (exception: CancellationException) { throw exception }
+        catch (throwable: Throwable) {
+            val e = throwable.toAppException()
+            _detail.value = if (e is AppException.Unauthorized) {
                 WorkoutPlanDetailState.Unauthorized
             } else {
-                WorkoutPlanDetailState.Error(if (e.code() == 403) "Acceso denegado." else "No se pudo cargar el plan.")
+                WorkoutPlanDetailState.Error(
+                    when {
+                        e is AppException.Network -> "No se pudo conectar con el servidor."
+                        e is AppException.Forbidden -> "Acceso denegado."
+                        e is AppException.NotFound -> "No se encontró el plan."
+                        e is AppException.Conflict -> "El recurso ha cambiado o existe un conflicto. Vuelve a cargar e inténtalo de nuevo."
+                        else -> "No se pudo cargar el plan."
+                    },
+                )
             }
         }
-        catch (_: Exception) { _detail.value = WorkoutPlanDetailState.Error("No se pudo cargar el plan.") }
     }
     fun prepareCreate() {
         _create.value = WorkoutPlanCreateState()
         scope.launch {
             runCatching { getTemplates() }
                 .onSuccess { templates -> _create.update { it.copy(templates = templates.filter { template -> template.active }) } }
-                .onFailure { _create.update { it.copy(error = "No se pudieron cargar las plantillas.") } }
+                .onFailure { failure ->
+                    if (failure is CancellationException) throw failure
+                    _create.update { it.copy(error = "No se pudieron cargar las plantillas.") }
+                }
         }
     }
     fun setStartDate(v: String) { _create.update { it.copy(startDate = v, error = null) } }
@@ -111,7 +132,10 @@ class WorkoutPlanViewModel @Inject constructor(
                         )
                     }
                 }
-                .onFailure { _create.update { it.copy(error = "No se pudo cargar la plantilla.") } }
+                .onFailure { failure ->
+                    if (failure is CancellationException) throw failure
+                    _create.update { it.copy(error = "No se pudo cargar la plantilla.") }
+                }
         }
     }
     fun assignExercise(exerciseId: Long, day: Int) {
@@ -132,6 +156,9 @@ class WorkoutPlanViewModel @Inject constructor(
         request.validationError()?.let { message -> _create.update { it.copy(error = message) }; return@launch }
         _create.update { it.copy(saving = true) }
         try { val id = createPlan(clientId, request).id; _create.update { it.copy(saving = false, createdId = id) }; onCreated(id) }
-        catch (_: Exception) { _create.update { it.copy(saving = false, error = "No se pudo crear el plan.") } }
+        catch (exception: CancellationException) { throw exception }
+        catch (_: AppException) {
+            _create.update { it.copy(saving = false, error = "No se pudo crear el plan.") }
+        }
     }
 }

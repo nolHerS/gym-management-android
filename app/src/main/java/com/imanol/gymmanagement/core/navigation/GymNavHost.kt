@@ -153,13 +153,7 @@ fun GymNavHost(
             composable<MyWorkoutPlan> {
                 MyWorkoutPlanScreen(
                     viewModel = myWorkoutPlanViewModel,
-                    onUnauthorized = {
-                        loginViewModel.logout {
-                            navController.navigate(Login) {
-                                popUpTo(MainGraph) { inclusive = true }
-                            }
-                        }
-                    },
+                    onUnauthorized = {},
                 )
             }
             composable<ExerciseCategories> {
@@ -168,13 +162,7 @@ fun GymNavHost(
                     onCategorySelected = { categoryId ->
                         navController.navigate(Exercises(categoryId))
                     },
-                    onUnauthorized = {
-                        loginViewModel.logout {
-                            navController.navigate(Login) {
-                                popUpTo(MainGraph) { inclusive = true }
-                            }
-                        }
-                    },
+                    onUnauthorized = {},
                 )
             }
             composable<Exercises> { backStackEntry ->
@@ -185,13 +173,7 @@ fun GymNavHost(
                     onExerciseSelected = { exerciseId ->
                         navController.navigate(ExerciseDetail(exerciseId))
                     },
-                    onUnauthorized = {
-                        loginViewModel.logout {
-                            navController.navigate(Login) {
-                                popUpTo(MainGraph) { inclusive = true }
-                            }
-                        }
-                    },
+                    onUnauthorized = {},
                 )
             }
             composable<ExerciseDetail> { backStackEntry ->
@@ -199,13 +181,7 @@ fun GymNavHost(
                 ExerciseDetailScreen(
                     exerciseId = route.exerciseId,
                     viewModel = exerciseDetailViewModel,
-                    onUnauthorized = {
-                        loginViewModel.logout {
-                            navController.navigate(Login) {
-                                popUpTo(MainGraph) { inclusive = true }
-                            }
-                        }
-                    },
+                    onUnauthorized = {},
                 )
             }
             composable<Clients> {
@@ -214,13 +190,7 @@ fun GymNavHost(
                     onClientSelected = { clientId ->
                         navController.navigate(ClientDetail(clientId))
                     },
-                    onUnauthorized = {
-                        loginViewModel.logout {
-                            navController.navigate(Login) {
-                                popUpTo(MainGraph) { inclusive = true }
-                            }
-                        }
-                    },
+                    onUnauthorized = {},
                 )
             }
             composable<ClientDetail> { backStackEntry ->
@@ -230,22 +200,12 @@ fun GymNavHost(
                     viewModel = clientDetailViewModel,
                     onWorkoutPlans = { navController.navigate(WorkoutPlans(it)) },
                     onNutritionPlans = { navController.navigate(NutritionPlans(it)) },
-                    onUnauthorized = {
-                        loginViewModel.logout {
-                            navController.navigate(Login) {
-                                popUpTo(MainGraph) { inclusive = true }
-                            }
-                        }
-                    },
+                    onUnauthorized = {},
                 )
             }
             composable<WorkoutPlans> { entry ->
                 val route = entry.toRoute<WorkoutPlans>()
-                WorkoutPlansScreen(route.clientId, workoutPlanViewModel, { navController.navigate(WorkoutPlanDetail(it)) }, {
-                    loginViewModel.logout {
-                        navController.navigate(Login) { popUpTo(MainGraph) { inclusive = true } }
-                    }
-                }, { navController.navigate(CreateWorkoutPlan(route.clientId)) })
+                WorkoutPlansScreen(route.clientId, workoutPlanViewModel, { navController.navigate(WorkoutPlanDetail(it)) }, {}, { navController.navigate(CreateWorkoutPlan(route.clientId)) })
             }
             composable<CreateWorkoutPlan> { entry ->
                 val route = entry.toRoute<CreateWorkoutPlan>()
@@ -253,11 +213,7 @@ fun GymNavHost(
             }
             composable<WorkoutPlanDetail> { entry ->
                 val route = entry.toRoute<WorkoutPlanDetail>()
-                WorkoutPlanDetailScreen(route.planId, workoutPlanViewModel) {
-                    loginViewModel.logout {
-                        navController.navigate(Login) { popUpTo(MainGraph) { inclusive = true } }
-                    }
-                }
+                WorkoutPlanDetailScreen(route.planId, workoutPlanViewModel) {}
             }
             composable<NutritionPlans> { entry ->
                 val route = entry.toRoute<NutritionPlans>()
@@ -267,13 +223,7 @@ fun GymNavHost(
                     canManage = (homeState as? HomeUiState.Success)?.user?.role == "TRAINER",
                     onPlanSelected = { navController.navigate(NutritionPlanDetail(it)) },
                     onCreate = { navController.navigate(NutritionPlanForm(route.clientId)) },
-                    onUnauthorized = {
-                        loginViewModel.logout {
-                            navController.navigate(Login) {
-                                popUpTo(MainGraph) { inclusive = true }
-                            }
-                        }
-                    },
+                    onUnauthorized = {},
                     onAccessDenied = {
                         navController.navigate(Home) {
                             popUpTo(MainGraph)
@@ -291,13 +241,7 @@ fun GymNavHost(
                     onEdit = { clientId, planId ->
                         navController.navigate(NutritionPlanForm(clientId, planId))
                     },
-                    onUnauthorized = {
-                        loginViewModel.logout {
-                            navController.navigate(Login) {
-                                popUpTo(MainGraph) { inclusive = true }
-                            }
-                        }
-                    },
+                    onUnauthorized = {},
                     onAccessDenied = {
                         navController.navigate(Home) {
                             popUpTo(MainGraph)
@@ -314,13 +258,7 @@ fun GymNavHost(
                     viewModel = nutritionPlanViewModel,
                     canManage = (homeState as? HomeUiState.Success)?.user?.role == "TRAINER",
                     onSaved = { navController.navigate(NutritionPlanDetail(it)) },
-                    onUnauthorized = {
-                        loginViewModel.logout {
-                            navController.navigate(Login) {
-                                popUpTo(MainGraph) { inclusive = true }
-                            }
-                        }
-                    },
+                    onUnauthorized = {},
                     onAccessDenied = {
                         navController.navigate(Home) {
                             popUpTo(MainGraph)
@@ -338,13 +276,7 @@ fun GymNavHost(
                     onFoodSelected = { navController.navigate(FoodDetail(it)) },
                     onCreate = { navController.navigate(FoodForm()) },
                     onEdit = { navController.navigate(FoodForm(it)) },
-                    onUnauthorized = {
-                        loginViewModel.logout {
-                            navController.navigate(Login) {
-                                popUpTo(MainGraph) { inclusive = true }
-                            }
-                        }
-                    },
+                    onUnauthorized = {},
                 )
             }
             composable<FoodDetail> { entry ->
@@ -356,13 +288,7 @@ fun GymNavHost(
                     viewModel = foodViewModel,
                     canManage = canManage,
                     onEdit = { navController.navigate(FoodForm(it)) },
-                    onUnauthorized = {
-                        loginViewModel.logout {
-                            navController.navigate(Login) {
-                                popUpTo(MainGraph) { inclusive = true }
-                            }
-                        }
-                    },
+                    onUnauthorized = {},
                 )
             }
             composable<FoodForm> { entry ->
@@ -371,26 +297,14 @@ fun GymNavHost(
                     foodId = route.foodId,
                     viewModel = foodViewModel,
                     onSaved = { navController.navigate(FoodDetail(it)) },
-                    onUnauthorized = {
-                        loginViewModel.logout {
-                            navController.navigate(Login) {
-                                popUpTo(MainGraph) { inclusive = true }
-                            }
-                        }
-                    },
+                    onUnauthorized = {},
                 )
             }
             composable<MyNutrition> {
                 MyNutritionScreen(
                     viewModel = myNutritionViewModel,
                     onPlanSelected = { navController.navigate(MyNutritionPlan(it)) },
-                    onUnauthorized = {
-                        loginViewModel.logout {
-                            navController.navigate(Login) {
-                                popUpTo(MainGraph) { inclusive = true }
-                            }
-                        }
-                    },
+                    onUnauthorized = {},
                 )
             }
             composable<MyNutritionPlan> { entry ->
@@ -398,13 +312,7 @@ fun GymNavHost(
                 MyNutritionPlanScreen(
                     planId = route.planId,
                     viewModel = myNutritionViewModel,
-                    onUnauthorized = {
-                        loginViewModel.logout {
-                            navController.navigate(Login) {
-                                popUpTo(MainGraph) { inclusive = true }
-                            }
-                        }
-                    },
+                    onUnauthorized = {},
                 )
             }
             composable<WorkoutTemplates> {
@@ -419,13 +327,7 @@ fun GymNavHost(
                     onEditTemplate = { templateId ->
                         navController.navigate(WorkoutTemplateForm(templateId))
                     },
-                    onUnauthorized = {
-                        loginViewModel.logout {
-                            navController.navigate(Login) {
-                                popUpTo(MainGraph) { inclusive = true }
-                            }
-                        }
-                    },
+                    onUnauthorized = {},
                 )
             }
             composable<WorkoutTemplateDetail> { backStackEntry ->
@@ -436,13 +338,7 @@ fun GymNavHost(
                     onEditTemplate = { templateId ->
                         navController.navigate(WorkoutTemplateForm(templateId))
                     },
-                    onUnauthorized = {
-                        loginViewModel.logout {
-                            navController.navigate(Login) {
-                                popUpTo(MainGraph) { inclusive = true }
-                            }
-                        }
-                    },
+                    onUnauthorized = {},
                 )
             }
             composable<WorkoutTemplateForm> { backStackEntry ->
@@ -451,13 +347,7 @@ fun GymNavHost(
                     templateId = route.templateId,
                     viewModel = workoutTemplatesViewModel,
                     onSaved = { navController.popBackStack() },
-                    onUnauthorized = {
-                        loginViewModel.logout {
-                            navController.navigate(Login) {
-                                popUpTo(MainGraph) { inclusive = true }
-                            }
-                        }
-                    },
+                    onUnauthorized = {},
                 )
             }
         }

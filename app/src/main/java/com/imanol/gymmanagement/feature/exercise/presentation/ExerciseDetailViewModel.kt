@@ -5,15 +5,16 @@ import androidx.lifecycle.viewModelScope
 import com.imanol.gymmanagement.feature.exercise.domain.Exercise
 import com.imanol.gymmanagement.feature.exercise.domain.GetExerciseDetailUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
-import java.io.IOException
 import javax.inject.Inject
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import retrofit2.HttpException
+import com.imanol.gymmanagement.core.domain.AppException
+import com.imanol.gymmanagement.core.network.toAppException
 
 sealed interface ExerciseDetailUiState {
     data object Loading : ExerciseDetailUiState
@@ -47,19 +48,22 @@ class ExerciseDetailViewModel @Inject constructor(
         loadJob = (providedScope ?: viewModelScope).launch {
             try {
                 _uiState.value = ExerciseDetailUiState.Success(getExerciseDetail(exerciseId))
-            } catch (exception: HttpException) {
-                _uiState.value = if (exception.code() == 401) {
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (throwable: Throwable) {
+                val exception = throwable.toAppException()
+                _uiState.value = if (exception is AppException.Unauthorized) {
                     ExerciseDetailUiState.Unauthorized
+                } else if (exception is AppException.Network) {
+                    ExerciseDetailUiState.Error(
+                        "No se pudo conectar con el servidor. Inténtalo de nuevo.",
+                    )
                 } else {
                     ExerciseDetailUiState.Error(
-                        if (exception.code() == 403) "Acceso denegado."
+                        if (exception is AppException.Forbidden) "Acceso denegado."
                         else "No se pudo cargar el ejercicio. Inténtalo de nuevo.",
                     )
                 }
-            } catch (_: IOException) {
-                _uiState.value = ExerciseDetailUiState.Error(
-                    "No se pudo conectar con el servidor. Inténtalo de nuevo.",
-                )
             }
         }
     }

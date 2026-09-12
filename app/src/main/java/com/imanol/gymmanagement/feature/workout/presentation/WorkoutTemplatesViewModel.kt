@@ -10,15 +10,16 @@ import com.imanol.gymmanagement.feature.workout.domain.ActivateWorkoutTemplateUs
 import com.imanol.gymmanagement.feature.workout.domain.DeactivateWorkoutTemplateUseCase
 import com.imanol.gymmanagement.feature.workout.domain.WorkoutTemplate
 import dagger.hilt.android.lifecycle.HiltViewModel
-import java.io.IOException
 import javax.inject.Inject
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import retrofit2.HttpException
+import com.imanol.gymmanagement.core.domain.AppException
+import com.imanol.gymmanagement.core.network.toAppException
 
 sealed interface WorkoutTemplatesUiState {
     data object Loading : WorkoutTemplatesUiState
@@ -85,19 +86,22 @@ class WorkoutTemplatesViewModel @Inject constructor(
                 } else {
                     WorkoutTemplatesUiState.Success(templates)
                 }
-            } catch (exception: HttpException) {
-                _uiState.value = if (exception.isUnauthorized()) {
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (throwable: Throwable) {
+                val exception = throwable.toAppException()
+                _uiState.value = if (exception is AppException.Unauthorized) {
                     WorkoutTemplatesUiState.Unauthorized
+                } else if (exception is AppException.Network) {
+                    WorkoutTemplatesUiState.Error(
+                        "No se pudo conectar con el servidor. Inténtalo de nuevo.",
+                    )
                 } else {
                     WorkoutTemplatesUiState.Error(
-                        if (exception.code() == 403) "Acceso denegado."
+                        if (exception is AppException.Forbidden) "Acceso denegado."
                         else "No se pudieron cargar las plantillas. Inténtalo de nuevo.",
                     )
                 }
-            } catch (_: IOException) {
-                _uiState.value = WorkoutTemplatesUiState.Error(
-                    "No se pudo conectar con el servidor. Inténtalo de nuevo.",
-                )
             }
         }
     }
@@ -115,18 +119,19 @@ class WorkoutTemplatesViewModel @Inject constructor(
                     name = template.name,
                     description = template.description.orEmpty(),
                 )
-            } catch (exception: HttpException) {
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (throwable: Throwable) {
+                val exception = throwable.toAppException()
                 _formState.value = WorkoutTemplateFormState(
-                    errorMessage = if (exception.isUnauthorized()) {
+                    errorMessage = if (exception is AppException.Unauthorized) {
                         "No autorizado."
+                    } else if (exception is AppException.Network) {
+                        "No se pudo conectar con el servidor. Inténtalo de nuevo."
                     } else {
-                        if (exception.code() == 403) "Acceso denegado."
+                        if (exception is AppException.Forbidden) "Acceso denegado."
                         else "No se pudo cargar la plantilla. Inténtalo de nuevo."
                     },
-                )
-            } catch (_: IOException) {
-                _formState.value = WorkoutTemplateFormState(
-                    errorMessage = "No se pudo conectar con el servidor. Inténtalo de nuevo.",
                 )
             }
         }
@@ -164,20 +169,20 @@ class WorkoutTemplatesViewModel @Inject constructor(
                 }
                 _formState.value = _formState.value.copy(isSaving = false, saved = true)
                 loadTemplates()
-            } catch (exception: HttpException) {
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (throwable: Throwable) {
+                val exception = throwable.toAppException()
                 _formState.value = _formState.value.copy(
                     isSaving = false,
-                    errorMessage = if (exception.isUnauthorized()) {
+                    errorMessage = if (exception is AppException.Unauthorized) {
                         "No autorizado."
+                    } else if (exception is AppException.Network) {
+                        "No se pudo conectar con el servidor. Inténtalo de nuevo."
                     } else {
-                        if (exception.code() == 403) "Acceso denegado."
+                        if (exception is AppException.Forbidden) "Acceso denegado."
                         else "No se pudo guardar la plantilla. Inténtalo de nuevo."
                     },
-                )
-            } catch (_: IOException) {
-                _formState.value = _formState.value.copy(
-                    isSaving = false,
-                    errorMessage = "No se pudo conectar con el servidor. Inténtalo de nuevo.",
                 )
             }
         }
@@ -192,24 +197,25 @@ class WorkoutTemplatesViewModel @Inject constructor(
                     activateWorkoutTemplate(template.id)
                 }
                 loadTemplates()
-            } catch (exception: HttpException) {
-                _uiState.value = if (exception.isUnauthorized()) {
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (throwable: Throwable) {
+                val exception = throwable.toAppException()
+                _uiState.value = if (exception is AppException.Unauthorized) {
                     WorkoutTemplatesUiState.Unauthorized
+                } else if (exception is AppException.Network) {
+                    WorkoutTemplatesUiState.Error(
+                        "No se pudo conectar con el servidor. Inténtalo de nuevo.",
+                    )
                 } else {
                     WorkoutTemplatesUiState.Error(
-                        if (exception.code() == 403) "Acceso denegado."
+                        if (exception is AppException.Forbidden) "Acceso denegado."
                         else "No se pudo actualizar el estado. Inténtalo de nuevo.",
                     )
                 }
-            } catch (_: IOException) {
-                _uiState.value = WorkoutTemplatesUiState.Error(
-                    "No se pudo conectar con el servidor. Inténtalo de nuevo.",
-                )
             }
         }
     }
 
     private fun scope(): CoroutineScope = providedScope ?: viewModelScope
 }
-
-private fun HttpException.isUnauthorized(): Boolean = code() == 401

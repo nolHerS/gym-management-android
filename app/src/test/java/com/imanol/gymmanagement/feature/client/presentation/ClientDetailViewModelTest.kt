@@ -45,6 +45,17 @@ class ClientDetailViewModelTest {
         assertEquals(ClientDetailUiState.Unauthorized, viewModel.uiState.value)
     }
 
+    @Test
+    fun notFoundResponseProducesErrorState() {
+        val viewModel = viewModelFor(
+            HttpException(Response.error<Unit>(404, "Not found".toResponseBody())),
+        )
+
+        viewModel.loadClient(2L)
+
+        assertTrue(viewModel.uiState.value is ClientDetailUiState.Error)
+    }
+
     private fun viewModelFor(exception: Exception?): ClientDetailViewModel =
         ClientDetailViewModel(
             GetClientDetailUseCase(

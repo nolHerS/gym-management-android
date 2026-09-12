@@ -7,7 +7,6 @@ import com.imanol.gymmanagement.core.session.SessionManager
 import com.imanol.gymmanagement.feature.auth.data.remote.AuthApi
 import com.imanol.gymmanagement.feature.auth.data.remote.LoginRequest
 import dagger.hilt.android.lifecycle.HiltViewModel
-import java.io.IOException
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -17,7 +16,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import retrofit2.HttpException
+import com.imanol.gymmanagement.core.domain.AppException
+import com.imanol.gymmanagement.core.network.networkCall
 
 data class LoginSuccess(
     val tokenType: String,
@@ -83,12 +83,12 @@ class LoginViewModel @Inject constructor(
             }
 
             try {
-                val response = authApi.login(
+                val response = networkCall { authApi.login(
                     LoginRequest(
                         email = currentState.email,
                         password = currentState.password,
                     ),
-                )
+                ) }
                 sessionManager.saveSession(
                     token = response.token,
                     tokenType = response.tokenType,
@@ -103,9 +103,7 @@ class LoginViewModel @Inject constructor(
                         ),
                     )
                 }
-            } catch (_: HttpException) {
-                showGenericError()
-            } catch (_: IOException) {
+            } catch (_: AppException) {
                 showGenericError()
             } catch (_: InvalidSessionException) {
                 showGenericError()
