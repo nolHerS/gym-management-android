@@ -15,7 +15,7 @@ fun Throwable.toAppException(): AppException {
     return when (this) {
         is AppException -> this
         is HttpException -> when (code()) {
-            400 -> AppException.BadRequest(this)
+            400, 422 -> AppException.BadRequest(this)
             401 -> AppException.Unauthorized(this)
             403 -> AppException.Forbidden(this)
             404 -> AppException.NotFound(this)

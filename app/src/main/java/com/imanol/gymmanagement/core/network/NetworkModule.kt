@@ -8,6 +8,7 @@ import com.imanol.gymmanagement.feature.client.data.remote.ClientApi
 import com.imanol.gymmanagement.feature.workout.data.remote.WorkoutApi
 import com.imanol.gymmanagement.feature.workoutplan.data.remote.WorkoutPlanApi
 import com.imanol.gymmanagement.feature.nutrition.data.remote.NutritionApi
+import com.imanol.gymmanagement.feature.workoutsession.data.remote.WorkoutSessionApi
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -91,6 +92,11 @@ object NetworkModule {
     @Singleton
     fun provideNutritionApi(retrofit: Retrofit): NutritionApi =
         retrofit.create(NutritionApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideWorkoutSessionApi(retrofit: Retrofit): WorkoutSessionApi =
+        retrofit.create(WorkoutSessionApi::class.java)
 
     private fun validatedBaseUrl(): String {
         check(BuildConfig.DEBUG || BuildConfig.BASE_URL.startsWith("https://")) {

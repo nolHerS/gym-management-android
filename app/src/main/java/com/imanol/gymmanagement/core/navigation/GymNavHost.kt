@@ -40,6 +40,11 @@ import com.imanol.gymmanagement.feature.workoutplan.presentation.*
 import com.imanol.gymmanagement.feature.workoutexecution.domain.WorkoutExecutionSnapshot
 import com.imanol.gymmanagement.feature.workoutexecution.domain.WorkoutExecutionState
 import com.imanol.gymmanagement.feature.workoutexecution.presentation.*
+import com.imanol.gymmanagement.feature.workoutsession.domain.AddWorkoutSessionSetUseCase
+import com.imanol.gymmanagement.feature.workoutsession.domain.CancelWorkoutSessionUseCase
+import com.imanol.gymmanagement.feature.workoutsession.domain.FinishWorkoutSessionUseCase
+import com.imanol.gymmanagement.feature.workoutsession.domain.UpdateWorkoutSessionExerciseUseCase
+import com.imanol.gymmanagement.feature.workoutsession.domain.WorkoutSession
 import com.imanol.gymmanagement.feature.nutrition.presentation.*
 
 private fun isAuthenticationRoute(route: String?): Boolean =
@@ -67,12 +72,17 @@ fun GymNavHost(
     nutritionPlanViewModel: NutritionPlanViewModel,
     foodViewModel: FoodViewModel,
     myNutritionViewModel: MyNutritionViewModel,
+    addWorkoutSessionSet: AddWorkoutSessionSetUseCase,
+    updateWorkoutSessionExercise: UpdateWorkoutSessionExerciseUseCase,
+    finishWorkoutSession: FinishWorkoutSessionUseCase,
+    cancelWorkoutSession: CancelWorkoutSessionUseCase,
 ) {
     val navController = rememberNavController()
     val sessionState by loginViewModel.sessionState.collectAsStateWithLifecycle()
     val homeState by homeViewModel.uiState.collectAsStateWithLifecycle()
     val backStackEntry by navController.currentBackStackEntryAsState()
     var pendingWorkoutSnapshot by remember { mutableStateOf<WorkoutExecutionSnapshot?>(null) }
+    var pendingWorkoutSession by remember { mutableStateOf<WorkoutSession?>(null) }
     var finishedWorkoutState by remember { mutableStateOf<WorkoutExecutionState?>(null) }
 
     LaunchedEffect(sessionState, backStackEntry) {
@@ -172,19 +182,30 @@ fun GymNavHost(
                 WorkoutTodayScreen(
                     viewModel = workoutTodayViewModel,
                     onUnauthorized = {},
-                    onStart = { snapshot ->
+                    onStart = { snapshot, session ->
                         pendingWorkoutSnapshot = snapshot
+                        pendingWorkoutSession = session
                         navController.navigate(WorkoutExecution)
                     },
                 )
             }
             composable<WorkoutExecution> {
                 val snapshot = pendingWorkoutSnapshot
-                val executionViewModel = snapshot?.let {
-                    viewModel<WorkoutExecutionViewModel>(
-                        key = "workout-execution-${it.startedAt}",
-                        factory = WorkoutExecutionViewModelFactory(it),
-                    )
+                val session = pendingWorkoutSession
+                val executionViewModel = snapshot?.let { currentSnapshot ->
+                    session?.let { currentSession ->
+                        viewModel<WorkoutExecutionViewModel>(
+                            key = "workout-execution-${currentSession.id}",
+                            factory = WorkoutExecutionViewModelFactory(
+                                currentSnapshot,
+                                currentSession,
+                                addWorkoutSessionSet,
+                                updateWorkoutSessionExercise,
+                                finishWorkoutSession,
+                                cancelWorkoutSession,
+                            ),
+                        )
+                    }
                 }
                 WorkoutExecutionScreen(
                     viewModel = executionViewModel,

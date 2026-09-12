@@ -22,7 +22,12 @@ import com.imanol.gymmanagement.feature.workoutexecution.presentation.WorkoutTod
 import com.imanol.gymmanagement.feature.nutrition.presentation.FoodViewModel
 import com.imanol.gymmanagement.feature.nutrition.presentation.MyNutritionViewModel
 import com.imanol.gymmanagement.feature.nutrition.presentation.NutritionPlanViewModel
+import com.imanol.gymmanagement.feature.workoutsession.domain.AddWorkoutSessionSetUseCase
+import com.imanol.gymmanagement.feature.workoutsession.domain.CancelWorkoutSessionUseCase
+import com.imanol.gymmanagement.feature.workoutsession.domain.FinishWorkoutSessionUseCase
+import com.imanol.gymmanagement.feature.workoutsession.domain.UpdateWorkoutSessionExerciseUseCase
 import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
 @AndroidEntryPoint(ComponentActivity::class)
 class MainActivity : Hilt_MainActivity() {
@@ -42,6 +47,10 @@ class MainActivity : Hilt_MainActivity() {
     private val nutritionPlanViewModel: NutritionPlanViewModel by viewModels()
     private val foodViewModel: FoodViewModel by viewModels()
     private val myNutritionViewModel: MyNutritionViewModel by viewModels()
+    @Inject lateinit var addWorkoutSessionSet: AddWorkoutSessionSetUseCase
+    @Inject lateinit var updateWorkoutSessionExercise: UpdateWorkoutSessionExerciseUseCase
+    @Inject lateinit var finishWorkoutSession: FinishWorkoutSessionUseCase
+    @Inject lateinit var cancelWorkoutSession: CancelWorkoutSessionUseCase
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -64,6 +73,10 @@ class MainActivity : Hilt_MainActivity() {
                 nutritionPlanViewModel,
                 foodViewModel,
                 myNutritionViewModel,
+                addWorkoutSessionSet,
+                updateWorkoutSessionExercise,
+                finishWorkoutSession,
+                cancelWorkoutSession,
             )
         }
     }

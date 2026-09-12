@@ -33,14 +33,16 @@ import com.imanol.gymmanagement.feature.workoutexecution.domain.WorkoutExecution
 import com.imanol.gymmanagement.feature.workoutexecution.domain.WorkoutExecutionState
 import com.imanol.gymmanagement.feature.workoutexecution.domain.WorkoutExecutionStatus
 import com.imanol.gymmanagement.feature.workoutexecution.domain.WorkoutRestTimerStatus
+import com.imanol.gymmanagement.feature.workoutsession.domain.WorkoutSession
 
 @Composable
 fun WorkoutTodayScreen(
     viewModel: WorkoutTodayViewModel,
     onUnauthorized: () -> Unit,
-    onStart: (WorkoutExecutionSnapshot) -> Unit,
+    onStart: (WorkoutExecutionSnapshot, WorkoutSession) -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val startState by viewModel.startState.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
         viewModel.loadToday()
@@ -97,9 +99,19 @@ fun WorkoutTodayScreen(
                 }
                 GymButton(
                     text = "COMENZAR",
-                    onClick = { viewModel.createSnapshot(onStart) },
+                    onClick = { viewModel.startWorkout(onStart) },
+                    enabled = !startState.isStarting,
                     modifier = Modifier.fillMaxWidth(),
                 )
+                startState.errorMessage?.let { message ->
+                    GymErrorMessage(message = message)
+                    GymButton(
+                        text = "REINTENTAR",
+                        onClick = { viewModel.retryStart(onStart) },
+                        enabled = !startState.isStarting,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
             }
         }
     }
@@ -117,13 +129,16 @@ fun WorkoutExecutionScreen(
         return
     }
     val executionState by viewModel.uiState.collectAsStateWithLifecycle()
+    val syncState by viewModel.syncState.collectAsStateWithLifecycle()
     val timerState by viewModel.restTimerState.collectAsStateWithLifecycle()
     var showExitConfirmation by remember { mutableStateOf(false) }
     val canLeaveWithConfirmation = executionState.status == WorkoutExecutionStatus.Running ||
         executionState.status == WorkoutExecutionStatus.Resting
 
-    LaunchedEffect(executionState.status) {
-        if (executionState.status == WorkoutExecutionStatus.Finished) {
+    LaunchedEffect(executionState.status, syncState) {
+        if (executionState.status == WorkoutExecutionStatus.Finished &&
+            syncState is WorkoutExecutionSyncState.Synced
+        ) {
             onFinished(executionState)
         }
     }
@@ -169,6 +184,19 @@ fun WorkoutExecutionScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Text("Entrenamiento", style = MaterialTheme.typography.headlineSmall)
+        when (val currentSyncState = syncState) {
+            WorkoutExecutionSyncState.Syncing -> GymLoading()
+            is WorkoutExecutionSyncState.Error -> {
+                GymErrorMessage(message = currentSyncState.message)
+                GymButton(
+                    text = "REINTENTAR SINCRONIZACIÓN",
+                    onClick = viewModel::retrySynchronization,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            WorkoutExecutionSyncState.Idle,
+            WorkoutExecutionSyncState.Synced -> Unit
+        }
         Text(
             "Ejercicio ${executionState.currentExerciseIndex + 1} de ${executionState.totalExercises}",
             style = MaterialTheme.typography.titleMedium,
@@ -251,7 +279,9 @@ fun WorkoutExecutionScreen(
         }
         if (executionState.status == WorkoutExecutionStatus.Cancelled) {
             Text("Entrenamiento abandonado.", color = MaterialTheme.colorScheme.error)
-            GymButton(text = "VOLVER", onClick = onCancelled, modifier = Modifier.fillMaxWidth())
+            if (syncState is WorkoutExecutionSyncState.Synced) {
+                GymButton(text = "VOLVER", onClick = onCancelled, modifier = Modifier.fillMaxWidth())
+            }
         }
     }
 }
@@ -301,6 +331,7 @@ private fun WorkoutExecutionInvalidScreen(onBack: () -> Unit) {
 fun WorkoutFinishedScreen(
     state: WorkoutExecutionState,
     onDone: () -> Unit,
+    synchronized: Boolean = true,
 ) {
     Column(
         modifier = Modifier
@@ -314,8 +345,11 @@ fun WorkoutFinishedScreen(
         Text("${state.completedSets} / ${state.totalSets} series")
         Text("Progreso: ${(state.progress * 100).toInt()}%")
         Text(
-            "Este entrenamiento se ha completado localmente. Todavía no existe " +
-                "sincronización con el servidor ni historial.",
+            if (synchronized) {
+                "Sesión finalizada y sincronizada con el servidor."
+            } else {
+                "Sesión finalizada localmente, pendiente de sincronización."
+            },
         )
         GymButton(text = "VOLVER", onClick = onDone, modifier = Modifier.fillMaxWidth())
     }

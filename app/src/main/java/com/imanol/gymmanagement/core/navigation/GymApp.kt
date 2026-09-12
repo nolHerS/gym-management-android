@@ -18,6 +18,10 @@ import com.imanol.gymmanagement.feature.workoutexecution.presentation.WorkoutTod
 import com.imanol.gymmanagement.feature.nutrition.presentation.FoodViewModel
 import com.imanol.gymmanagement.feature.nutrition.presentation.MyNutritionViewModel
 import com.imanol.gymmanagement.feature.nutrition.presentation.NutritionPlanViewModel
+import com.imanol.gymmanagement.feature.workoutsession.domain.AddWorkoutSessionSetUseCase
+import com.imanol.gymmanagement.feature.workoutsession.domain.CancelWorkoutSessionUseCase
+import com.imanol.gymmanagement.feature.workoutsession.domain.FinishWorkoutSessionUseCase
+import com.imanol.gymmanagement.feature.workoutsession.domain.UpdateWorkoutSessionExerciseUseCase
 
 @Composable
 fun GymApp(
@@ -37,6 +41,10 @@ fun GymApp(
     nutritionPlanViewModel: NutritionPlanViewModel,
     foodViewModel: FoodViewModel,
     myNutritionViewModel: MyNutritionViewModel,
+    addWorkoutSessionSet: AddWorkoutSessionSetUseCase,
+    updateWorkoutSessionExercise: UpdateWorkoutSessionExerciseUseCase,
+    finishWorkoutSession: FinishWorkoutSessionUseCase,
+    cancelWorkoutSession: CancelWorkoutSessionUseCase,
 ) {
     GymTheme {
         GymNavHost(
@@ -56,6 +64,10 @@ fun GymApp(
             nutritionPlanViewModel,
             foodViewModel,
             myNutritionViewModel,
+            addWorkoutSessionSet,
+            updateWorkoutSessionExercise,
+            finishWorkoutSession,
+            cancelWorkoutSession,
         )
     }
 }

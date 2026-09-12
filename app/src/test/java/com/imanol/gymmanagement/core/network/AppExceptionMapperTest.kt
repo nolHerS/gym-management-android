@@ -17,6 +17,7 @@ class AppExceptionMapperTest {
     @Test
     fun mapsHttpStatusCodes() {
         assertEquals(AppException.BadRequest::class, httpException(400).toAppException()::class)
+        assertEquals(AppException.BadRequest::class, httpException(422).toAppException()::class)
         assertEquals(AppException.Unauthorized::class, httpException(401).toAppException()::class)
         assertEquals(AppException.Forbidden::class, httpException(403).toAppException()::class)
         assertEquals(AppException.NotFound::class, httpException(404).toAppException()::class)

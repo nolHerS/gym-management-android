@@ -14,6 +14,8 @@ import com.imanol.gymmanagement.feature.workoutexecution.domain.isoDayOfWeek
 import com.imanol.gymmanagement.feature.workoutexecution.domain.mondayOfIsoWeek
 import com.imanol.gymmanagement.feature.workoutplan.domain.GetMyWorkoutWeekUseCase
 import com.imanol.gymmanagement.feature.workoutplan.domain.WorkoutPlan
+import com.imanol.gymmanagement.feature.workoutsession.domain.CreateWorkoutSessionUseCase
+import com.imanol.gymmanagement.feature.workoutsession.domain.WorkoutSession
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
@@ -47,23 +49,30 @@ class WorkoutTodayViewModel @Inject constructor(
     private val getMyWorkoutWeek: GetMyWorkoutWeekUseCase,
     private val selectPlan: SelectWorkoutPlanForExecutionUseCase,
     private val createSnapshot: CreateWorkoutExecutionSnapshotUseCase,
+    private val createWorkoutSession: CreateWorkoutSessionUseCase,
     private val dateProvider: WorkoutExecutionDateProvider,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<WorkoutTodayUiState>(WorkoutTodayUiState.Loading)
     val uiState: StateFlow<WorkoutTodayUiState> = _uiState.asStateFlow()
+    private val _startState = MutableStateFlow(WorkoutTodayStartState())
+    val startState: StateFlow<WorkoutTodayStartState> = _startState.asStateFlow()
 
     private var providedScope: CoroutineScope? = null
     private var loadJob: Job? = null
     private var loadGeneration = 0L
     private var loadedDate: String? = null
+    private var pendingSnapshot: WorkoutExecutionSnapshot? = null
+    private var startJob: Job? = null
+    private var createdSession: WorkoutSession? = null
 
     internal constructor(
         getMyWorkoutWeek: GetMyWorkoutWeekUseCase,
         selectPlan: SelectWorkoutPlanForExecutionUseCase,
         createSnapshot: CreateWorkoutExecutionSnapshotUseCase,
+        createWorkoutSession: CreateWorkoutSessionUseCase,
         dateProvider: WorkoutExecutionDateProvider,
         scope: CoroutineScope,
-    ) : this(getMyWorkoutWeek, selectPlan, createSnapshot, dateProvider) {
+    ) : this(getMyWorkoutWeek, selectPlan, createSnapshot, createWorkoutSession, dateProvider) {
         providedScope = scope
     }
 
@@ -134,4 +143,48 @@ class WorkoutTodayViewModel @Inject constructor(
             )
         }
     }
+
+    fun startWorkout(onCreated: (WorkoutExecutionSnapshot, WorkoutSession) -> Unit) {
+        if (_startState.value.isStarting || startJob?.isActive == true || createdSession != null) return
+        val state = _uiState.value as? WorkoutTodayUiState.Success ?: return
+        _startState.value = WorkoutTodayStartState(isStarting = true)
+        startJob = (providedScope ?: viewModelScope).launch {
+            try {
+                val snapshot = createSnapshot(state.plan, state.dayOfWeek)
+                pendingSnapshot = snapshot
+                val session = createWorkoutSession(snapshot.planId)
+                createdSession = session
+                _startState.value = WorkoutTodayStartState()
+                onCreated(snapshot, session)
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (exception: InvalidWorkoutExecutionException) {
+                _startState.value = WorkoutTodayStartState(
+                    errorMessage = "El entrenamiento ha cambiado y ya no es válido. Inténtalo de nuevo.",
+                )
+            } catch (throwable: Throwable) {
+                val exception = throwable.toAppException()
+                _startState.value = WorkoutTodayStartState(
+                    errorMessage = startErrorMessage(exception),
+                )
+            }
+        }
+    }
+
+    fun retryStart(onCreated: (WorkoutExecutionSnapshot, WorkoutSession) -> Unit) {
+        startWorkout(onCreated)
+    }
+}
+
+data class WorkoutTodayStartState(
+    val isStarting: Boolean = false,
+    val errorMessage: String? = null,
+)
+
+private fun startErrorMessage(exception: AppException): String = when (exception) {
+    is AppException.Unauthorized -> "La sesión no es válida."
+    is AppException.Forbidden -> "Acceso denegado."
+    is AppException.Network -> "No se pudo conectar con el servidor. Inténtalo de nuevo."
+    is AppException.Conflict -> "Ya existe una sesión activa para este entrenamiento."
+    else -> "No se pudo comenzar el entrenamiento. Inténtalo de nuevo."
 }

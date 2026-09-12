@@ -13,6 +13,15 @@ import com.imanol.gymmanagement.feature.workoutplan.domain.WorkoutPlanDayRequest
 import com.imanol.gymmanagement.feature.workoutplan.domain.WorkoutPlanExercise
 import com.imanol.gymmanagement.feature.workoutplan.domain.WorkoutPlanExerciseRequest
 import com.imanol.gymmanagement.feature.workoutplan.domain.WorkoutPlanRepository
+import com.imanol.gymmanagement.feature.workoutsession.domain.CreateWorkoutSessionUseCase
+import com.imanol.gymmanagement.feature.workoutsession.domain.WorkoutSession
+import com.imanol.gymmanagement.feature.workoutsession.domain.WorkoutSessionExercise
+import com.imanol.gymmanagement.feature.workoutsession.domain.WorkoutSessionExerciseUpdate
+import com.imanol.gymmanagement.feature.workoutsession.domain.WorkoutSessionRepository
+import com.imanol.gymmanagement.feature.workoutsession.domain.WorkoutSessionSet
+import com.imanol.gymmanagement.feature.workoutsession.domain.WorkoutSessionSetInput
+import com.imanol.gymmanagement.feature.workoutsession.domain.WorkoutSessionStatus
+import com.imanol.gymmanagement.feature.workoutsession.domain.WorkoutSessionUpdate
 import java.io.IOException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
@@ -89,6 +98,7 @@ class WorkoutTodayViewModelTest {
                 } catch (exception: CancellationException) {
                     throw exception
                 }
+
             }
         }
         val viewModel = viewModel(repository)
@@ -98,6 +108,47 @@ class WorkoutTodayViewModelTest {
         viewModel.loadToday()
 
         assertTrue(repository.cancellationObserved)
+    }
+
+    @Test
+    fun startCreatesBackendSessionBeforeInvokingNavigation() {
+        val sessions = TestSessionRepository()
+        val viewModel = viewModel(TestRepository().also { it.result = listOf(plan()) }, sessions)
+        var createdSessionId: Long? = null
+
+        viewModel.loadToday()
+        viewModel.startWorkout { _, session -> createdSessionId = session.id }
+
+        assertEquals(10L, sessions.createdPlanId)
+        assertEquals(1L, createdSessionId)
+    }
+
+    @Test
+    fun failedSessionCreationDoesNotNavigateAndRetryCanSucceed() {
+        val sessions = TestSessionRepository().also { it.failure = IOException() }
+        val viewModel = viewModel(TestRepository().also { it.result = listOf(plan()) }, sessions)
+        var navigationCount = 0
+
+        viewModel.loadToday()
+        viewModel.startWorkout { _, _ -> navigationCount++ }
+        assertEquals(0, navigationCount)
+        assertTrue(viewModel.startState.value.errorMessage != null)
+
+        sessions.failure = null
+        viewModel.retryStart { _, _ -> navigationCount++ }
+        assertEquals(1, navigationCount)
+    }
+
+    @Test
+    fun repeatedStartDoesNotCreateTwoSessions() {
+        val sessions = TestSessionRepository()
+        val viewModel = viewModel(TestRepository().also { it.result = listOf(plan()) }, sessions)
+
+        viewModel.loadToday()
+        viewModel.startWorkout { _, _ -> }
+        viewModel.startWorkout { _, _ -> }
+
+        assertEquals(1, sessions.createCalls)
     }
 
     @Test
@@ -128,10 +179,14 @@ class WorkoutTodayViewModelTest {
         assertEquals(12L, state.plan.id)
     }
 
-    private fun viewModel(repository: TestRepository) = WorkoutTodayViewModel(
+    private fun viewModel(
+        repository: TestRepository,
+        sessions: TestSessionRepository = TestSessionRepository(),
+    ) = WorkoutTodayViewModel(
         getMyWorkoutWeek = GetMyWorkoutWeekUseCase(repository),
         selectPlan = SelectWorkoutPlanForExecutionUseCase(dateProvider),
         createSnapshot = CreateWorkoutExecutionSnapshotUseCase(dateProvider),
+        createWorkoutSession = CreateWorkoutSessionUseCase(sessions),
         dateProvider = dateProvider,
         scope = CoroutineScope(Dispatchers.Unconfined),
     )
@@ -165,6 +220,41 @@ class WorkoutTodayViewModelTest {
             ),
         ),
     )
+}
+
+private class TestSessionRepository : WorkoutSessionRepository {
+    var createCalls = 0
+    var createdPlanId: Long? = null
+    var failure: Exception? = null
+
+    override suspend fun createSession(workoutPlanId: Long) = WorkoutSession(
+        1L.also {
+            createCalls++
+            createdPlanId = workoutPlanId
+            failure?.let { exception -> throw exception }
+        },
+        workoutPlanId,
+        20L,
+        WorkoutSessionStatus.IN_PROGRESS,
+        "2026-09-09T10:00:00",
+        null,
+        null,
+        null,
+        null,
+        0L,
+        emptyList(),
+    )
+    override suspend fun getMySessions() = emptyList<WorkoutSession>()
+    override suspend fun getSession(sessionId: Long) = error("unused")
+    override suspend fun updateSession(sessionId: Long, update: WorkoutSessionUpdate) = error("unused")
+    override suspend fun addSet(sessionId: Long, input: WorkoutSessionSetInput) = error("unused")
+    override suspend fun updateExercise(
+        sessionId: Long,
+        exerciseId: Long,
+        update: WorkoutSessionExerciseUpdate,
+    ) = error("unused")
+    override suspend fun finishSession(sessionId: Long) = error("unused")
+    override suspend fun cancelSession(sessionId: Long) = error("unused")
 }
 
 private class FixedDateProvider(
