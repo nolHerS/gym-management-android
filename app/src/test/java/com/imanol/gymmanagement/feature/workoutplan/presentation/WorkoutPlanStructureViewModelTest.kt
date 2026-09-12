@@ -5,6 +5,11 @@ import com.imanol.gymmanagement.feature.workoutplan.domain.CreateWorkoutPlanRequ
 import com.imanol.gymmanagement.feature.workoutplan.domain.GetWorkoutPlanDetailUseCase
 import com.imanol.gymmanagement.feature.workoutplan.domain.AddWorkoutPlanDayUseCase
 import com.imanol.gymmanagement.feature.workoutplan.domain.DeleteWorkoutPlanDayUseCase
+import com.imanol.gymmanagement.feature.workoutplan.domain.AddWorkoutPlanExerciseUseCase
+import com.imanol.gymmanagement.feature.workoutplan.domain.UpdateWorkoutPlanExerciseUseCase
+import com.imanol.gymmanagement.feature.workoutplan.domain.DeleteWorkoutPlanExerciseUseCase
+import com.imanol.gymmanagement.feature.exercise.domain.GetExerciseCategoriesUseCase
+import com.imanol.gymmanagement.feature.exercise.domain.GetExercisesByCategoryUseCase
 import com.imanol.gymmanagement.feature.workoutplan.domain.UpdateWorkoutPlanRequest
 import com.imanol.gymmanagement.feature.workoutplan.domain.WorkoutPlan
 import com.imanol.gymmanagement.feature.workoutplan.domain.WorkoutPlanDay
@@ -202,12 +207,78 @@ class WorkoutPlanStructureViewModelTest {
         assertEquals(WorkoutPlanStructureMutationState.DeletingDay, viewModel.mutation.value)
     }
 
+    @Test
+    fun addUpdateAndDeleteExerciseUpdateLocalStructure() {
+        val added = exercise.copy(id = 12L, orderIndex = 3)
+        val updated = added.copy(sets = 6, orderIndex = 3)
+        val viewModel = viewModel(
+            addExerciseResult = { _, _, _ -> added },
+            updateExerciseResult = { _, _ -> updated },
+        )
+        viewModel.load(plan.id)
+
+        viewModel.addExercise(plan.id, 5, request(orderIndex = 3))
+        var loaded = (viewModel.state.value as WorkoutPlanStructureState.Success).plan
+        assertEquals(listOf(2, 3), loaded.days.first { it.dayOfWeek == 5 }.exercises.map { it.orderIndex })
+
+        viewModel.updateExercise(plan.id, 12L, request(orderIndex = 3, sets = 6))
+        loaded = (viewModel.state.value as WorkoutPlanStructureState.Success).plan
+        assertEquals(6, loaded.days.first { it.dayOfWeek == 5 }.exercises.first { it.id == 12L }.sets)
+
+        viewModel.deleteExercise(plan.id, 12L)
+        loaded = (viewModel.state.value as WorkoutPlanStructureState.Success).plan
+        assertTrue(loaded.days.first { it.dayOfWeek == 5 }.exercises.none { it.id == 12L })
+    }
+
+    @Test
+    fun exerciseValidationRejectsDuplicateOrderAndInactivePlan() {
+        val viewModel = viewModel()
+        viewModel.load(plan.id)
+        viewModel.addExercise(plan.id, 5, request(orderIndex = 2))
+        assertEquals(
+            WorkoutPlanStructureMutationState.Error("El orden ya existe en este día."),
+            viewModel.mutation.value,
+        )
+
+        val inactive = viewModel(result = { plan.copy(status = "INACTIVE") })
+        inactive.load(plan.id)
+        inactive.addExercise(plan.id, 5, request(orderIndex = 3))
+        assertTrue(inactive.mutation.value is WorkoutPlanStructureMutationState.Error)
+    }
+
+    @Test
+    fun exerciseConflictDoesNotChangeLocalPlan() {
+        val viewModel = viewModel(
+            addExerciseResult = { _, _, _ -> throw AppException.Conflict(IOException()) },
+        )
+        viewModel.load(plan.id)
+        viewModel.addExercise(plan.id, 5, request(orderIndex = 3))
+
+        val loaded = (viewModel.state.value as WorkoutPlanStructureState.Success).plan
+        assertEquals(1, loaded.days.first { it.dayOfWeek == 5 }.exercises.size)
+        assertEquals(
+            WorkoutPlanStructureMutationState.Error("El plan ha cambiado. Recarga el plan antes de continuar."),
+            viewModel.mutation.value,
+        )
+    }
+
+    private fun request(orderIndex: Int, sets: Int = 4) = WorkoutPlanExerciseRequest(
+        exerciseId = 99L,
+        orderIndex = orderIndex,
+        sets = sets,
+        repetitions = 10,
+        restSeconds = 90,
+    )
+
     private fun viewModel(
         result: suspend () -> WorkoutPlan = { plan },
         addDayResult: suspend (WorkoutPlanDayRequest) -> WorkoutPlanDay = {
             WorkoutPlanDay(30L, it.dayOfWeek, it.exercises.map { exercise })
         },
         deleteDayResult: suspend () -> Unit = {},
+        addExerciseResult: suspend (Long, Int, WorkoutPlanExerciseRequest) -> WorkoutPlanExercise = { _, _, _ -> exercise },
+        updateExerciseResult: suspend (Long, WorkoutPlanExerciseRequest) -> WorkoutPlanExercise = { _, _ -> exercise },
+        deleteExerciseResult: suspend (Long) -> Unit = {},
     ): WorkoutPlanStructureViewModel {
         val repository = object : WorkoutPlanRepository {
             override suspend fun getMine() = emptyList<WorkoutPlan>()
@@ -219,9 +290,10 @@ class WorkoutPlanStructureViewModelTest {
             override suspend fun addDay(planId: Long, request: WorkoutPlanDayRequest) = addDayResult(request)
             override suspend fun deleteDay(planId: Long, day: Int) = deleteDayResult()
             override suspend fun addExercise(planId: Long, day: Int, request: WorkoutPlanExerciseRequest) =
-                exercise
-            override suspend fun updateExercise(id: Long, request: WorkoutPlanExerciseRequest) = exercise
-            override suspend fun deleteExercise(id: Long) = Unit
+                addExerciseResult(planId, day, request)
+            override suspend fun updateExercise(id: Long, request: WorkoutPlanExerciseRequest) =
+                updateExerciseResult(id, request)
+            override suspend fun deleteExercise(id: Long) = deleteExerciseResult(id)
             override suspend fun deactivate(id: Long) = Unit
             override suspend fun complete(id: Long) = Unit
         }
@@ -229,6 +301,19 @@ class WorkoutPlanStructureViewModelTest {
             GetWorkoutPlanDetailUseCase(repository),
             AddWorkoutPlanDayUseCase(repository),
             DeleteWorkoutPlanDayUseCase(repository),
+            AddWorkoutPlanExerciseUseCase(repository),
+            UpdateWorkoutPlanExerciseUseCase(repository),
+            DeleteWorkoutPlanExerciseUseCase(repository),
+            GetExerciseCategoriesUseCase(object : com.imanol.gymmanagement.feature.exercise.domain.ExerciseRepository {
+                override suspend fun getExerciseCategories() = emptyList<com.imanol.gymmanagement.feature.exercise.domain.ExerciseCategory>()
+                override suspend fun getExercisesByCategory(categoryId: Long) = emptyList<com.imanol.gymmanagement.feature.exercise.domain.Exercise>()
+                override suspend fun getExerciseById(exerciseId: Long) = error("unused")
+            }),
+            GetExercisesByCategoryUseCase(object : com.imanol.gymmanagement.feature.exercise.domain.ExerciseRepository {
+                override suspend fun getExerciseCategories() = emptyList<com.imanol.gymmanagement.feature.exercise.domain.ExerciseCategory>()
+                override suspend fun getExercisesByCategory(categoryId: Long) = emptyList<com.imanol.gymmanagement.feature.exercise.domain.Exercise>()
+                override suspend fun getExerciseById(exerciseId: Long) = error("unused")
+            }),
             CoroutineScope(Dispatchers.Unconfined),
         )
     }

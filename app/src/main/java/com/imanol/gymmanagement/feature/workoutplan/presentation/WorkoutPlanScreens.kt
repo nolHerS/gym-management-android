@@ -9,6 +9,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.imanol.gymmanagement.feature.workoutplan.domain.WorkoutPlanExercise
+import com.imanol.gymmanagement.feature.workoutplan.domain.WorkoutPlanExerciseRequest
+import com.imanol.gymmanagement.feature.workoutplan.domain.WorkoutPlanDayRequest
 
 @Composable
 fun WorkoutPlansScreen(clientId: Long, viewModel: WorkoutPlanViewModel, onPlanSelected: (Long) -> Unit, onUnauthorized: () -> Unit, onCreate: () -> Unit = {}) {
@@ -169,6 +171,8 @@ fun WorkoutPlanDetailScreen(
     val structureMutation by structureViewModel.mutation.collectAsStateWithLifecycle()
     val mutation by viewModel.mutation.collectAsStateWithLifecycle()
     var confirmation by remember { mutableStateOf<String?>(null) }
+    var editor by remember { mutableStateOf<ExerciseEditorTarget?>(null) }
+    var daySelector by remember { mutableStateOf(false) }
     LaunchedEffect(planId) { structureViewModel.load(planId) }
     LaunchedEffect(structureState) {
         if (structureState is WorkoutPlanStructureState.Success) {
@@ -181,7 +185,9 @@ fun WorkoutPlanDetailScreen(
     if (confirmation != null) {
         val complete = confirmation == "complete"
         val deleteDay = confirmation?.startsWith("delete-day:") == true
+        val deleteExercise = confirmation?.startsWith("delete-exercise:") == true
         val selectedDay = confirmation?.substringAfter("delete-day:")?.toIntOrNull()
+        val selectedExercise = confirmation?.substringAfter("delete-exercise:")?.toLongOrNull()
         AlertDialog(
             onDismissRequest = { confirmation = null },
             title = {
@@ -189,6 +195,7 @@ fun WorkoutPlanDetailScreen(
                     when {
                         complete -> "Completar plan"
                         deleteDay -> "Eliminar día"
+                        deleteExercise -> "Eliminar ejercicio"
                         else -> "Desactivar plan"
                     },
                 )
@@ -198,6 +205,7 @@ fun WorkoutPlanDetailScreen(
                     when {
                         complete -> "¿Quieres marcar este plan como completado?"
                         deleteDay -> "¿Quieres eliminar el día? Se eliminarán también los ejercicios asociados."
+                        deleteExercise -> "¿Quieres eliminar este ejercicio?"
                         else -> "¿Quieres desactivar este plan?"
                     },
                 )
@@ -209,6 +217,8 @@ fun WorkoutPlanDetailScreen(
                         when {
                             complete -> viewModel.complete(planId)
                             deleteDay && selectedDay != null -> structureViewModel.deleteDay(planId, selectedDay)
+                            deleteExercise && selectedExercise != null ->
+                                structureViewModel.deleteExercise(planId, selectedExercise)
                             else -> viewModel.deactivate(planId)
                         }
                     },
@@ -216,7 +226,7 @@ fun WorkoutPlanDetailScreen(
                     Text(
                         when {
                             complete -> "Completar"
-                            deleteDay -> "Eliminar"
+                            deleteDay || deleteExercise -> "Eliminar"
                             else -> "Desactivar"
                         },
                     )
@@ -256,7 +266,10 @@ fun WorkoutPlanDetailScreen(
                     val mutating = mutation is WorkoutPlanMutationState.Completing ||
                         mutation is WorkoutPlanMutationState.Deactivating ||
                         structureMutation is WorkoutPlanStructureMutationState.AddingDay ||
-                        structureMutation is WorkoutPlanStructureMutationState.DeletingDay
+                        structureMutation is WorkoutPlanStructureMutationState.DeletingDay ||
+                        structureMutation is WorkoutPlanStructureMutationState.AddingExercise ||
+                        structureMutation is WorkoutPlanStructureMutationState.UpdatingExercise ||
+                        structureMutation is WorkoutPlanStructureMutationState.DeletingExercise
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(enabled = !mutating, onClick = { onEdit(plan.clientId) }) {
                             Text("Editar")
@@ -266,6 +279,9 @@ fun WorkoutPlanDetailScreen(
                         }
                         OutlinedButton(enabled = !mutating, onClick = { confirmation = "deactivate" }) {
                             Text("Desactivar")
+                        }
+                        OutlinedButton(enabled = !mutating, onClick = { daySelector = true }) {
+                            Text("Añadir día")
                         }
                     }
                 }
@@ -283,12 +299,20 @@ fun WorkoutPlanDetailScreen(
                     }
                     when (val operation = structureMutation) {
                         is WorkoutPlanStructureMutationState.Success -> Text(operation.message)
-                        is WorkoutPlanStructureMutationState.Error -> Text(
-                            operation.message,
-                            color = MaterialTheme.colorScheme.error,
-                        )
+                        is WorkoutPlanStructureMutationState.Error -> {
+                            Text(
+                                operation.message,
+                                color = MaterialTheme.colorScheme.error,
+                            )
+                            if (operation.message == "El plan ha cambiado. Recarga el plan antes de continuar.") {
+                                TextButton(onClick = structureViewModel::retry) { Text("Recargar") }
+                            }
+                        }
                         WorkoutPlanStructureMutationState.AddingDay,
-                        WorkoutPlanStructureMutationState.DeletingDay -> CircularProgressIndicator()
+                        WorkoutPlanStructureMutationState.DeletingDay,
+                        WorkoutPlanStructureMutationState.AddingExercise,
+                        WorkoutPlanStructureMutationState.UpdatingExercise,
+                        WorkoutPlanStructureMutationState.DeletingExercise -> CircularProgressIndicator()
                         WorkoutPlanStructureMutationState.Idle -> Unit
                     }
                 }
@@ -309,17 +333,85 @@ fun WorkoutPlanDetailScreen(
                         }
                         if (day.exercises.isEmpty()) {
                             Text("Sin ejercicios")
+                            if (canManage && plan.status == "ACTIVE") {
+                                Text("Este día no tiene ejercicios.")
+                                OutlinedButton(onClick = {
+                                    editor = ExerciseEditorTarget.Add(day.dayOfWeek)
+                                }) { Text("Añadir ejercicio") }
+                            }
                         } else {
                             day.exercises
                                 .sortedBy { it.orderIndex }
                                 .forEach { exercise ->
-                                    WorkoutPlanExerciseCard(exercise)
+                                    WorkoutPlanExerciseCard(
+                                        exercise = exercise,
+                                        canManage = canManage && plan.status == "ACTIVE",
+                                        onEdit = { editor = ExerciseEditorTarget.Edit(day.dayOfWeek, exercise) },
+                                        onDelete = { confirmation = "delete-exercise:${exercise.id}" },
+                                    )
                                 }
+                            if (canManage && plan.status == "ACTIVE") {
+                                OutlinedButton(onClick = {
+                                    editor = ExerciseEditorTarget.Add(day.dayOfWeek)
+                                }) { Text("Añadir ejercicio") }
+                            }
+                        }
+                    }
+                }
+                if (plan.days.isEmpty()) {
+                    item {
+                        Text(
+                            if (canManage && plan.status == "ACTIVE") {
+                                "Este plan no tiene días."
+                            } else {
+                                "Este plan todavía no tiene días."
+                            },
+                        )
+                        if (canManage && plan.status == "ACTIVE") {
+                            Button(onClick = { daySelector = true }) { Text("Añadir día") }
                         }
                     }
                 }
             }
         }
+    }
+    if (daySelector) {
+        AlertDialog(
+            onDismissRequest = { daySelector = false },
+            title = { Text("Seleccionar día") },
+            text = {
+                Column {
+                    (1..7).forEach { day ->
+                        TextButton(onClick = {
+                            daySelector = false
+                            editor = ExerciseEditorTarget.AddDay(day)
+                        }) { Text(dayName(day)) }
+                    }
+                }
+            },
+            confirmButton = {},
+        )
+    }
+    editor?.let { target ->
+        WorkoutPlanExerciseEditorDialog(
+            target = target,
+            catalog = structureViewModel.catalog.collectAsStateWithLifecycle().value,
+            mutation = structureMutation,
+            onLoadCatalog = structureViewModel::loadExerciseCatalog,
+            onLoadCategory = structureViewModel::loadExercises,
+            onDismiss = { editor = null },
+            onSubmit = { request ->
+                when (target) {
+                    is ExerciseEditorTarget.Add ->
+                        structureViewModel.addExercise(planId, target.dayOfWeek, request)
+                    is ExerciseEditorTarget.Edit ->
+                        structureViewModel.updateExercise(planId, target.exercise.id, request)
+                    is ExerciseEditorTarget.AddDay ->
+                        structureViewModel.addDay(planId, WorkoutPlanDayRequest(target.dayOfWeek, listOf(request)))
+                }
+                editor = null
+            },
+        )
     }
 }
 
@@ -335,7 +427,12 @@ fun dayName(dayOfWeek: Int): String = when (dayOfWeek) {
 }
 
 @Composable
-private fun WorkoutPlanExerciseCard(exercise: WorkoutPlanExercise) {
+private fun WorkoutPlanExerciseCard(
+    exercise: WorkoutPlanExercise,
+    canManage: Boolean,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+) {
     Card {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(exercise.exercise?.name ?: "Ejercicio no disponible")
@@ -345,6 +442,107 @@ private fun WorkoutPlanExerciseCard(exercise: WorkoutPlanExercise) {
             Text("${exercise.sets} series × ${exercise.repetitions} repeticiones")
             Text("Descanso: ${exercise.restSeconds} s")
             Text("Orden: ${exercise.orderIndex}")
+            if (canManage) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(onClick = onEdit) { Text("Editar") }
+                    OutlinedButton(onClick = onDelete) { Text("Eliminar") }
+                }
+            }
         }
     }
+}
+
+private sealed interface ExerciseEditorTarget {
+    val dayOfWeek: Int
+    data class Add(override val dayOfWeek: Int) : ExerciseEditorTarget
+    data class AddDay(override val dayOfWeek: Int) : ExerciseEditorTarget
+    data class Edit(override val dayOfWeek: Int, val exercise: WorkoutPlanExercise) : ExerciseEditorTarget
+}
+
+@Composable
+private fun WorkoutPlanExerciseEditorDialog(
+    target: ExerciseEditorTarget,
+    catalog: WorkoutPlanExerciseCatalogState,
+    mutation: WorkoutPlanStructureMutationState,
+    onLoadCatalog: () -> Unit,
+    onLoadCategory: (Long) -> Unit,
+    onDismiss: () -> Unit,
+    onSubmit: (WorkoutPlanExerciseRequest) -> Unit,
+) {
+    var selectedExerciseId by remember(target) {
+        mutableStateOf((target as? ExerciseEditorTarget.Edit)?.exercise?.exercise?.id)
+    }
+    var sets by remember(target) { mutableStateOf((target as? ExerciseEditorTarget.Edit)?.exercise?.sets?.toString() ?: "") }
+    var repetitions by remember(target) { mutableStateOf((target as? ExerciseEditorTarget.Edit)?.exercise?.repetitions?.toString() ?: "") }
+    var rest by remember(target) { mutableStateOf((target as? ExerciseEditorTarget.Edit)?.exercise?.restSeconds?.toString() ?: "") }
+    var order by remember(target) { mutableStateOf((target as? ExerciseEditorTarget.Edit)?.exercise?.orderIndex?.toString() ?: "") }
+    var error by remember(target) { mutableStateOf<String?>(null) }
+    LaunchedEffect(target) { onLoadCatalog() }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(if (target is ExerciseEditorTarget.Edit) "Editar ejercicio" else "Añadir ejercicio") },
+        text = {
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                item {
+                    when (catalog) {
+                        WorkoutPlanExerciseCatalogState.Idle,
+                        WorkoutPlanExerciseCatalogState.Loading -> CircularProgressIndicator()
+                        is WorkoutPlanExerciseCatalogState.Error -> {
+                            Text(catalog.message, color = MaterialTheme.colorScheme.error)
+                            TextButton(onClick = onLoadCatalog) { Text("Reintentar") }
+                        }
+                        is WorkoutPlanExerciseCatalogState.Categories -> {
+                            Text("Categoría")
+                            catalog.categories.forEach { category ->
+                                TextButton(onClick = {
+                                    onLoadCategory(category.id)
+                                }) { Text(category.name) }
+                            }
+                        }
+                        is WorkoutPlanExerciseCatalogState.Success -> {
+                            Text("Ejercicio")
+                            catalog.exercises.forEach { exercise ->
+                                TextButton(onClick = { selectedExerciseId = exercise.id }) {
+                                    Text(if (selectedExerciseId == exercise.id) "${exercise.name} (seleccionado)" else exercise.name)
+                                }
+                            }
+                        }
+                    }
+                }
+                item {
+                    OutlinedTextField(sets, { sets = it }, label = { Text("Series") })
+                    OutlinedTextField(repetitions, { repetitions = it }, label = { Text("Repeticiones") })
+                    OutlinedTextField(rest, { rest = it }, label = { Text("Descanso") })
+                    OutlinedTextField(order, { order = it }, label = { Text("Orden") })
+                    error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                enabled = mutation !is WorkoutPlanStructureMutationState.AddingExercise &&
+                    mutation !is WorkoutPlanStructureMutationState.UpdatingExercise,
+                onClick = {
+                    val request = WorkoutPlanExerciseRequest(
+                        exerciseId = selectedExerciseId,
+                        sourceTemplateExerciseId = (target as? ExerciseEditorTarget.Edit)?.exercise?.sourceTemplateExerciseId,
+                        orderIndex = order.toIntOrNull() ?: 0,
+                        sets = sets.toIntOrNull() ?: 0,
+                        repetitions = repetitions.toIntOrNull() ?: 0,
+                        restSeconds = rest.toIntOrNull() ?: -1,
+                    )
+                    val hasExerciseReference = selectedExerciseId != null ||
+                        request.sourceTemplateExerciseId != null
+                    if (!hasExerciseReference || request.orderIndex < 1 || request.sets < 1 ||
+                        request.repetitions < 1 || request.restSeconds < 0
+                    ) {
+                        error = "Los datos del ejercicio no son válidos."
+                    } else {
+                        onSubmit(request)
+                    }
+                },
+            ) { Text("Guardar") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } },
+    )
 }
