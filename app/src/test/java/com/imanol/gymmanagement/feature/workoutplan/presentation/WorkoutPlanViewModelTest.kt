@@ -125,10 +125,94 @@ class WorkoutPlanViewModelTest {
         gate.complete(plan)
     }
 
+    @Test
+    fun completeUpdatesStateAndPreventsSecondSubmit() {
+        var calls = 0
+        val gate = CompletableDeferred<Unit>()
+        val viewModel = viewModel(
+            completeResult = {
+                calls++
+                gate.await()
+            },
+        )
+        viewModel.loadDetail(plan.id)
+        viewModel.complete(plan.id)
+        viewModel.complete(plan.id)
+
+        assertEquals(1, calls)
+        assertEquals(WorkoutPlanMutationState.Completing, viewModel.mutation.value)
+        gate.complete(Unit)
+        assertEquals("COMPLETED", (viewModel.detail.value as WorkoutPlanDetailState.Success).plan.status)
+    }
+
+    @Test
+    fun deactivateUpdatesState() {
+        val viewModel = viewModel(deactivateResult = { Unit })
+        viewModel.loadDetail(plan.id)
+        viewModel.deactivate(plan.id)
+
+        assertEquals("INACTIVE", (viewModel.detail.value as WorkoutPlanDetailState.Success).plan.status)
+        assertEquals(
+            WorkoutPlanMutationState.Success("Plan desactivado correctamente."),
+            viewModel.mutation.value,
+        )
+    }
+
+    @Test
+    fun lifecycleMutationMapsConflict() {
+        val viewModel = viewModel(completeResult = { throw AppException.Conflict(IOException()) })
+        viewModel.loadDetail(plan.id)
+        viewModel.complete(plan.id)
+
+        assertEquals(
+            WorkoutPlanMutationState.Error(
+                "El plan ha cambiado o existe un conflicto. Vuelve a cargarlo antes de continuar.",
+            ),
+            viewModel.mutation.value,
+        )
+    }
+
+    @Test
+    fun lifecycleMutationMapsAllErrors() {
+        val failures = listOf(
+            AppException.BadRequest(IOException()) to "El plan no puede cambiar a este estado.",
+            AppException.Forbidden(IOException()) to "No tienes permisos para modificar este plan.",
+            AppException.NotFound(IOException()) to "El plan ya no existe.",
+            AppException.Conflict(IOException()) to "El plan ha cambiado o existe un conflicto. Vuelve a cargarlo antes de continuar.",
+            AppException.Server(IOException()) to "El servidor no está disponible. Inténtalo de nuevo.",
+            AppException.Network(IOException()) to "No se ha podido conectar con el servidor.",
+            AppException.Serialization(IOException()) to "La respuesta del servidor no es válida.",
+            AppException.Unexpected(IOException()) to "Ha ocurrido un error inesperado.",
+        )
+
+        failures.forEach { (failure, message) ->
+            val completeViewModel = viewModel(completeResult = { throw failure })
+            completeViewModel.loadDetail(plan.id)
+            completeViewModel.complete(plan.id)
+            assertEquals(WorkoutPlanMutationState.Error(message), completeViewModel.mutation.value)
+
+            val deactivateViewModel = viewModel(deactivateResult = { throw failure })
+            deactivateViewModel.loadDetail(plan.id)
+            deactivateViewModel.deactivate(plan.id)
+            assertEquals(WorkoutPlanMutationState.Error(message), deactivateViewModel.mutation.value)
+        }
+    }
+
+    @Test
+    fun lifecycleMutationDoesNotConvertCancellationToError() {
+        val viewModel = viewModel(completeResult = { throw CancellationException() })
+        viewModel.loadDetail(plan.id)
+        viewModel.complete(plan.id)
+
+        assertEquals(WorkoutPlanMutationState.Completing, viewModel.mutation.value)
+    }
+
     private fun viewModel(
         result: suspend () -> List<WorkoutPlan> = { emptyList() },
         planResult: suspend () -> WorkoutPlan = { plan },
         updateResult: suspend (UpdateWorkoutPlanRequest) -> WorkoutPlan = { plan },
+        completeResult: suspend () -> Unit = {},
+        deactivateResult: suspend () -> Unit = {},
     ): WorkoutPlanViewModel {
         val repository = object : WorkoutPlanRepository {
             override suspend fun getMine() = emptyList<WorkoutPlan>()
@@ -145,8 +229,8 @@ class WorkoutPlanViewModelTest {
             override suspend fun updateExercise(id: Long, request: WorkoutPlanExerciseRequest) =
                 WorkoutPlanExercise(id, null, request.sourceTemplateExerciseId, request.orderIndex, request.sets, request.repetitions, request.restSeconds)
             override suspend fun deleteExercise(id: Long) = Unit
-            override suspend fun deactivate(id: Long) = Unit
-            override suspend fun complete(id: Long) = Unit
+            override suspend fun complete(id: Long) = completeResult()
+            override suspend fun deactivate(id: Long) = deactivateResult()
         }
         val workoutRepository = object : WorkoutRepository {
             override suspend fun getWorkoutTemplates() = emptyList<WorkoutTemplate>()
@@ -170,6 +254,8 @@ class WorkoutPlanViewModelTest {
             GetWorkoutPlanDetailUseCase(repository),
             CreateWorkoutPlanUseCase(repository),
             UpdateWorkoutPlanUseCase(repository),
+            CompleteWorkoutPlanUseCase(repository),
+            DeactivateWorkoutPlanUseCase(repository),
             GetWorkoutTemplatesUseCase(workoutRepository),
             GetWorkoutTemplateDetailUseCase(workoutRepository),
             CoroutineScope(Dispatchers.Unconfined),

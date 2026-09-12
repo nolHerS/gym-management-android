@@ -163,9 +163,32 @@ fun WorkoutPlanDetailScreen(
     onUnauthorized: () -> Unit,
 ) {
     val state by viewModel.detail.collectAsStateWithLifecycle()
+    val mutation by viewModel.mutation.collectAsStateWithLifecycle()
+    var confirmation by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(planId) { viewModel.loadDetailIfNeeded(planId) }
     LaunchedEffect(state) {
         if (state is WorkoutPlanDetailState.Unauthorized) onUnauthorized()
+    }
+    if (confirmation != null) {
+        val complete = confirmation == "complete"
+        AlertDialog(
+            onDismissRequest = { confirmation = null },
+            title = { Text(if (complete) "Completar plan" else "Desactivar plan") },
+            text = {
+                Text(if (complete) "¿Quieres marcar este plan como completado?" else "¿Quieres desactivar este plan?")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        confirmation = null
+                        if (complete) viewModel.complete(planId) else viewModel.deactivate(planId)
+                    },
+                ) { Text(if (complete) "Completar" else "Desactivar") }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmation = null }) { Text("Cancelar") }
+            },
+        )
     }
     Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("Detalle del plan", style = MaterialTheme.typography.headlineSmall)
@@ -178,7 +201,26 @@ fun WorkoutPlanDetailScreen(
                 Text("Desde: ${s.plan.startDate}")
                 s.plan.endDate?.let { Text("Hasta: $it") }
                 if (canManage && s.plan.status == "ACTIVE") {
-                    Button(onClick = { onEdit(s.plan.clientId) }) { Text("Editar") }
+                    val mutating = mutation is WorkoutPlanMutationState.Completing ||
+                        mutation is WorkoutPlanMutationState.Deactivating
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(enabled = !mutating, onClick = { onEdit(s.plan.clientId) }) {
+                            Text("Editar")
+                        }
+                        Button(enabled = !mutating, onClick = { confirmation = "complete" }) {
+                            Text("Completar")
+                        }
+                        OutlinedButton(enabled = !mutating, onClick = { confirmation = "deactivate" }) {
+                            Text("Desactivar")
+                        }
+                    }
+                }
+                when (val operation = mutation) {
+                    is WorkoutPlanMutationState.Success -> Text(operation.message)
+                    is WorkoutPlanMutationState.Error -> Text(operation.message, color = MaterialTheme.colorScheme.error)
+                    WorkoutPlanMutationState.Completing -> CircularProgressIndicator()
+                    WorkoutPlanMutationState.Deactivating -> CircularProgressIndicator()
+                    WorkoutPlanMutationState.Idle -> Unit
                 }
                 s.plan.days.forEach { day -> Text("Día ${day.dayOfWeek}: ${day.exercises.size} ejercicios") }
             }

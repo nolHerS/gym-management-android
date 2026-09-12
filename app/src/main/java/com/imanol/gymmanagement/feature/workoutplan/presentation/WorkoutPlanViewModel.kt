@@ -23,6 +23,14 @@ sealed interface WorkoutPlansState {
     data class Error(val message: String) : WorkoutPlansState
     data object Unauthorized : WorkoutPlansState
 }
+
+sealed interface WorkoutPlanMutationState {
+    data object Idle : WorkoutPlanMutationState
+    data object Completing : WorkoutPlanMutationState
+    data object Deactivating : WorkoutPlanMutationState
+    data class Success(val message: String) : WorkoutPlanMutationState
+    data class Error(val message: String) : WorkoutPlanMutationState
+}
 sealed interface WorkoutPlanDetailState {
     data object Loading : WorkoutPlanDetailState
     data class Success(val plan: WorkoutPlan) : WorkoutPlanDetailState
@@ -51,6 +59,8 @@ class WorkoutPlanViewModel @Inject constructor(
     private val getPlan: GetWorkoutPlanDetailUseCase,
     private val createPlan: CreateWorkoutPlanUseCase,
     private val updatePlan: UpdateWorkoutPlanUseCase,
+    private val completePlan: CompleteWorkoutPlanUseCase,
+    private val deactivatePlan: DeactivateWorkoutPlanUseCase,
     private val getTemplates: GetWorkoutTemplatesUseCase,
     private val getTemplateDetail: GetWorkoutTemplateDetailUseCase,
 ) : ViewModel() {
@@ -60,14 +70,26 @@ class WorkoutPlanViewModel @Inject constructor(
     val detail = _detail.asStateFlow()
     private val _create = MutableStateFlow(WorkoutPlanCreateState())
     val createState = _create.asStateFlow()
+    private val _mutation = MutableStateFlow<WorkoutPlanMutationState>(WorkoutPlanMutationState.Idle)
+    val mutation = _mutation.asStateFlow()
     private var scope: CoroutineScope = viewModelScope
 
     internal constructor(
         getPlans: GetClientWorkoutPlansUseCase, getPlan: GetWorkoutPlanDetailUseCase,
         createPlan: CreateWorkoutPlanUseCase, updatePlan: UpdateWorkoutPlanUseCase,
+        completePlan: CompleteWorkoutPlanUseCase, deactivatePlan: DeactivateWorkoutPlanUseCase,
         getTemplates: GetWorkoutTemplatesUseCase,
         getTemplateDetail: GetWorkoutTemplateDetailUseCase, scope: CoroutineScope,
-    ) : this(getPlans, getPlan, createPlan, updatePlan, getTemplates, getTemplateDetail) { this.scope = scope }
+    ) : this(
+        getPlans,
+        getPlan,
+        createPlan,
+        updatePlan,
+        completePlan,
+        deactivatePlan,
+        getTemplates,
+        getTemplateDetail,
+    ) { this.scope = scope }
 
     fun load(clientId: Long) = scope.launch {
         _plans.value = WorkoutPlansState.Loading
@@ -244,6 +266,46 @@ class WorkoutPlanViewModel @Inject constructor(
         if ((_detail.value as? WorkoutPlanDetailState.Success)?.plan?.id != id) loadDetail(id)
     }
 
+    fun clearMutation() {
+        _mutation.value = WorkoutPlanMutationState.Idle
+    }
+
+    fun complete(id: Long) = scope.launch {
+        if (_mutation.value is WorkoutPlanMutationState.Completing ||
+            _mutation.value is WorkoutPlanMutationState.Deactivating
+        ) return@launch
+        val current = (_detail.value as? WorkoutPlanDetailState.Success)?.plan
+        if (current?.id != id || current.status != "ACTIVE") return@launch
+        _mutation.value = WorkoutPlanMutationState.Completing
+        try {
+            completePlan(id)
+            _detail.value = WorkoutPlanDetailState.Success(current.copy(status = "COMPLETED"))
+            _mutation.value = WorkoutPlanMutationState.Success("Plan completado correctamente.")
+        } catch (exception: CancellationException) {
+            throw exception
+        } catch (exception: Exception) {
+            _mutation.value = WorkoutPlanMutationState.Error(mutationError(exception.toAppException()))
+        }
+    }
+
+    fun deactivate(id: Long) = scope.launch {
+        if (_mutation.value is WorkoutPlanMutationState.Completing ||
+            _mutation.value is WorkoutPlanMutationState.Deactivating
+        ) return@launch
+        val current = (_detail.value as? WorkoutPlanDetailState.Success)?.plan
+        if (current?.id != id || current.status != "ACTIVE") return@launch
+        _mutation.value = WorkoutPlanMutationState.Deactivating
+        try {
+            deactivatePlan(id)
+            _detail.value = WorkoutPlanDetailState.Success(current.copy(status = "INACTIVE"))
+            _mutation.value = WorkoutPlanMutationState.Success("Plan desactivado correctamente.")
+        } catch (exception: CancellationException) {
+            throw exception
+        } catch (exception: Exception) {
+            _mutation.value = WorkoutPlanMutationState.Error(mutationError(exception.toAppException()))
+        }
+    }
+
     private fun validateUpdate(request: UpdateWorkoutPlanRequest): String? {
         val start = request.startDate
         val end = request.endDate
@@ -274,5 +336,16 @@ class WorkoutPlanViewModel @Inject constructor(
         is AppException.Network -> "No se pudo conectar con el servidor."
         is AppException.Serialization, is AppException.InvalidResponse -> "No se pudo interpretar la respuesta del servidor."
         else -> "No se pudo ${if (editing) "guardar" else "crear"} el plan."
+    }
+
+    private fun mutationError(error: AppException): String = when (error) {
+        is AppException.BadRequest -> "El plan no puede cambiar a este estado."
+        is AppException.Forbidden -> "No tienes permisos para modificar este plan."
+        is AppException.NotFound -> "El plan ya no existe."
+        is AppException.Conflict -> "El plan ha cambiado o existe un conflicto. Vuelve a cargarlo antes de continuar."
+        is AppException.Server -> "El servidor no está disponible. Inténtalo de nuevo."
+        is AppException.Network -> "No se ha podido conectar con el servidor."
+        is AppException.Serialization, is AppException.InvalidResponse -> "La respuesta del servidor no es válida."
+        else -> "Ha ocurrido un error inesperado."
     }
 }
