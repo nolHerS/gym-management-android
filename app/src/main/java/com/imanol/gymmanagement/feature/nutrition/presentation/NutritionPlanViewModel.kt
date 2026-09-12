@@ -16,6 +16,7 @@ import com.imanol.gymmanagement.feature.nutrition.domain.NutritionPlanInput
 import com.imanol.gymmanagement.feature.nutrition.domain.NutritionPlanStatus
 import com.imanol.gymmanagement.feature.nutrition.domain.UpdateNutritionPlanUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -122,7 +123,9 @@ class NutritionPlanViewModel @Inject constructor(
                 } else {
                     NutritionPlansUiState.Success(result)
                 }
-            } catch (throwable: Throwable) {
+            } catch (e: CancellationException) {
+                throw e
+            } catch (throwable: Exception) {
                 _plans.value = NutritionPlansUiState.Failure(
                     throwable.toNutritionProblem("No se pudieron cargar los planes."),
                 )
@@ -135,7 +138,9 @@ class NutritionPlanViewModel @Inject constructor(
         scope.launch {
             try {
                 _detail.value = NutritionPlanDetailUiState.Success(getPlan(planId))
-            } catch (throwable: Throwable) {
+            } catch (e: CancellationException) {
+                throw e
+            } catch (throwable: Exception) {
                 _detail.value = NutritionPlanDetailUiState.Failure(
                     throwable.toNutritionProblem("No se pudo cargar el plan."),
                 )
@@ -178,7 +183,9 @@ class NutritionPlanViewModel @Inject constructor(
                         foods = foods,
                     )
                 }
-            } catch (throwable: Throwable) {
+            } catch (e: CancellationException) {
+                throw e
+            } catch (throwable: Exception) {
                 _form.value = NutritionPlanFormState(
                     problem = throwable.toNutritionProblem("No se pudo preparar el formulario."),
                 )
@@ -277,7 +284,9 @@ class NutritionPlanViewModel @Inject constructor(
                 }
                 _form.update { it.copy(saving = false, savedPlanId = saved.id) }
                 loadedClientId?.let { loadPlans(it) }
-            } catch (throwable: Throwable) {
+            } catch (e: CancellationException) {
+                throw e
+            } catch (throwable: Exception) {
                 _form.update {
                     it.copy(
                         saving = false,
@@ -302,7 +311,9 @@ class NutritionPlanViewModel @Inject constructor(
                 action(planId)
                 loadDetail(planId)
                 loadedClientId?.let { loadPlans(it) }
-            } catch (throwable: Throwable) {
+            } catch (e: CancellationException) {
+                throw e
+            } catch (throwable: Exception) {
                 _detail.value = NutritionPlanDetailUiState.Failure(
                     throwable.toNutritionProblem("No se pudo actualizar el plan."),
                 )

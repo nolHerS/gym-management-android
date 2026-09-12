@@ -6,6 +6,7 @@ import com.imanol.gymmanagement.feature.nutrition.domain.GetFoodsUseCase
 import com.imanol.gymmanagement.feature.nutrition.domain.SaveFoodUseCase
 import com.imanol.gymmanagement.feature.nutrition.domain.SetFoodActiveUseCase
 import java.io.IOException
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import okhttp3.ResponseBody.Companion.toResponseBody
@@ -79,6 +80,17 @@ class FoodViewModelTest {
             NutritionFailure.FORBIDDEN,
             (viewModel.detail.value as FoodDetailUiState.Failure).problem.failure,
         )
+    }
+
+    @Test
+    fun cancellationDoesNotBecomeFoodError() {
+        val repository = FakeNutritionRepository()
+        repository.failure = CancellationException("screen closed")
+        val viewModel = viewModel(repository)
+
+        viewModel.loadFoods()
+
+        assertEquals(FoodsUiState.Loading, viewModel.foods.value)
     }
 
     private fun viewModel(repository: FakeNutritionRepository) = FoodViewModel(

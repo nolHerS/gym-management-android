@@ -7,6 +7,7 @@ import com.imanol.gymmanagement.feature.nutrition.domain.GetMyNutritionPlanUseCa
 import com.imanol.gymmanagement.feature.nutrition.domain.GetMyNutritionPlansUseCase
 import com.imanol.gymmanagement.feature.nutrition.domain.NutritionPlan
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.async
@@ -59,7 +60,9 @@ class MyNutritionViewModel @Inject constructor(
                 } else {
                     MyNutritionUiState.Success(all, activePlans)
                 }
-            } catch (throwable: Throwable) {
+            } catch (e: CancellationException) {
+                throw e
+            } catch (throwable: Exception) {
                 _plans.value = MyNutritionUiState.Failure(
                     throwable.toNutritionProblem("No se pudo cargar tu nutrición."),
                 )
@@ -72,7 +75,9 @@ class MyNutritionViewModel @Inject constructor(
         scope.launch {
             try {
                 _detail.value = NutritionPlanDetailUiState.Success(getPlan(id))
-            } catch (throwable: Throwable) {
+            } catch (e: CancellationException) {
+                throw e
+            } catch (throwable: Exception) {
                 _detail.value = NutritionPlanDetailUiState.Failure(
                     throwable.toNutritionProblem("No se pudo cargar el plan."),
                 )

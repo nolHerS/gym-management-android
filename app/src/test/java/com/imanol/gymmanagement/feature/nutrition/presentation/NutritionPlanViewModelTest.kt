@@ -8,6 +8,7 @@ import com.imanol.gymmanagement.feature.nutrition.domain.GetClientNutritionPlans
 import com.imanol.gymmanagement.feature.nutrition.domain.GetFoodsUseCase
 import com.imanol.gymmanagement.feature.nutrition.domain.GetNutritionPlanUseCase
 import com.imanol.gymmanagement.feature.nutrition.domain.UpdateNutritionPlanUseCase
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import okhttp3.ResponseBody.Companion.toResponseBody
@@ -110,6 +111,17 @@ class NutritionPlanViewModelTest {
             NutritionFailure.UNAUTHORIZED,
             (viewModel.detail.value as NutritionPlanDetailUiState.Failure).problem.failure,
         )
+    }
+
+    @Test
+    fun cancellationDoesNotBecomePlanError() {
+        val repository = FakeNutritionRepository()
+        repository.failure = CancellationException("screen closed")
+        val viewModel = viewModel(repository)
+
+        viewModel.loadPlans(2L)
+
+        assertEquals(NutritionPlansUiState.Loading, viewModel.plans.value)
     }
 
     private fun viewModel(repository: FakeNutritionRepository) = NutritionPlanViewModel(

@@ -10,6 +10,7 @@ import com.imanol.gymmanagement.feature.nutrition.domain.SaveFoodUseCase
 import com.imanol.gymmanagement.feature.nutrition.domain.SetFoodActiveUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CancellationException
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -75,7 +76,9 @@ class FoodViewModel @Inject constructor(
             try {
                 val result = getFoods()
                 _foods.value = if (result.isEmpty()) FoodsUiState.Empty else FoodsUiState.Success(result)
-            } catch (throwable: Throwable) {
+            } catch (e: CancellationException) {
+                throw e
+            } catch (throwable: Exception) {
                 _foods.value = FoodsUiState.Failure(
                     throwable.toNutritionProblem("No se pudieron cargar los alimentos."),
                 )
@@ -88,7 +91,9 @@ class FoodViewModel @Inject constructor(
         scope.launch {
             try {
                 _detail.value = FoodDetailUiState.Success(getFood(id))
-            } catch (throwable: Throwable) {
+            } catch (e: CancellationException) {
+                throw e
+            } catch (throwable: Exception) {
                 _detail.value = FoodDetailUiState.Failure(
                     throwable.toNutritionProblem("No se pudo cargar el alimento."),
                 )
@@ -115,7 +120,9 @@ class FoodViewModel @Inject constructor(
                     servingSize = food.servingSize.orEmpty(),
                     servingUnit = food.servingUnit.orEmpty(),
                 )
-            } catch (throwable: Throwable) {
+            } catch (e: CancellationException) {
+                throw e
+            } catch (throwable: Exception) {
                 _form.value = FoodFormState(
                     problem = throwable.toNutritionProblem("No se pudo cargar el alimento."),
                 )
@@ -151,7 +158,9 @@ class FoodViewModel @Inject constructor(
                 val saved = saveFood(id, input)
                 _form.update { it.copy(saving = false, savedFoodId = saved.id) }
                 loadFoods()
-            } catch (throwable: Throwable) {
+            } catch (e: CancellationException) {
+                throw e
+            } catch (throwable: Exception) {
                 _form.update {
                     it.copy(
                         saving = false,
@@ -172,7 +181,9 @@ class FoodViewModel @Inject constructor(
                 setFoodActive(food.id, !food.active)
                 loadFoods()
                 if (current is FoodDetailUiState.Success) loadFood(food.id)
-            } catch (throwable: Throwable) {
+            } catch (e: CancellationException) {
+                throw e
+            } catch (throwable: Exception) {
                 val problem = throwable.toNutritionProblem("No se pudo actualizar el alimento.")
                 if (current is FoodDetailUiState.Success) {
                     _detail.value = FoodDetailUiState.Failure(problem)

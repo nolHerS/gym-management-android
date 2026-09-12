@@ -5,6 +5,7 @@ import com.imanol.gymmanagement.feature.nutrition.domain.GetMyActiveNutritionPla
 import com.imanol.gymmanagement.feature.nutrition.domain.GetMyNutritionPlanUseCase
 import com.imanol.gymmanagement.feature.nutrition.domain.GetMyNutritionPlansUseCase
 import java.io.IOException
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import okhttp3.ResponseBody.Companion.toResponseBody
@@ -63,6 +64,17 @@ class MyNutritionViewModelTest {
         val detailViewModel = viewModel(repository)
         detailViewModel.loadDetail(10L)
         assertTrue("lastPlanId=${repository.lastPlanId}", repository.lastPlanId == 10L)
+    }
+
+    @Test
+    fun cancellationDoesNotBecomeNutritionError() {
+        val repository = FakeNutritionRepository()
+        repository.failure = CancellationException("screen closed")
+        val viewModel = viewModel(repository)
+
+        viewModel.load()
+
+        assertEquals(MyNutritionUiState.Loading, viewModel.plans.value)
     }
 
     private fun viewModel(repository: FakeNutritionRepository) = MyNutritionViewModel(
