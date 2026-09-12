@@ -21,6 +21,17 @@ class RoleGuardTest {
     }
 
     @Test
+    fun trainerCannotAccessClientDestination() {
+        assertFalse(RoleGuard.canAccess("TRAINER", MyWorkoutPlan::class.qualifiedName))
+    }
+
+    @Test
+    fun bothRolesCanAccessSharedDestination() {
+        assertTrue(RoleGuard.canAccess("CLIENT", Home::class.qualifiedName))
+        assertTrue(RoleGuard.canAccess("TRAINER", Home::class.qualifiedName))
+    }
+
+    @Test
     fun unknownDestinationIsNotBlockedByRoleGuard() {
         assertTrue(RoleGuard.canAccess("CLIENT", Home::class.qualifiedName))
     }

@@ -8,8 +8,12 @@ import com.imanol.gymmanagement.feature.workoutplan.domain.WorkoutPlanDayRequest
 import com.imanol.gymmanagement.feature.workoutplan.domain.WorkoutPlanExerciseRequest
 import com.imanol.gymmanagement.feature.workoutplan.domain.WorkoutPlanRepository
 import java.io.IOException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.withContext
 import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -57,6 +61,141 @@ class MyWorkoutPlanViewModelTest {
         assertEquals("2026-09-07", "2026-09-13".mondayOfWeek())
     }
 
+    @Test
+    fun identifiesCurrentAndNonCurrentWeeks() {
+        assertTrue(isCurrentWeek("2026-09-14", "2026-09-14"))
+        assertTrue(!isCurrentWeek("2026-09-07", "2026-09-14"))
+    }
+
+    @Test
+    fun calculatesSundayForMondayWeekStart() {
+        assertEquals("2026-09-20", weekEnd("2026-09-14"))
+    }
+
+    @Test
+    fun newerWeekCannotBeOverwrittenByOlderResponse() {
+        val repository = TestRepository()
+        val weekA = CompletableDeferred<List<WorkoutPlan>>()
+        val weekB = CompletableDeferred<List<WorkoutPlan>>()
+        repository.loader = { week ->
+            if (week == "2026-09-07") weekA.await() else weekB.await()
+        }
+        val viewModel = viewModel(repository)
+
+        viewModel.loadWeek("2026-09-07")
+        viewModel.loadWeek("2026-09-14")
+        weekB.complete(listOf(plan("2026-09-14")))
+        weekA.complete(listOf(plan("2026-09-07")))
+
+        val state = viewModel.uiState.value as MyWorkoutPlanUiState.Success
+        assertEquals("2026-09-14", state.weekStart)
+        assertEquals("2026-09-14", state.plans.single().startDate)
+    }
+
+    @Test
+    fun nonCooperativeOlderResponseCannotOverwriteNewerWeek() {
+        val repository = TestRepository()
+        val oldResponse = CompletableDeferred<List<WorkoutPlan>>()
+        val newResponse = CompletableDeferred<List<WorkoutPlan>>()
+        repository.loader = { week ->
+            if (week == "2026-09-07") {
+                try {
+                    oldResponse.await()
+                } catch (exception: kotlinx.coroutines.CancellationException) {
+                    withContext(NonCancellable) { oldResponse.await() }
+                }
+            } else {
+                newResponse.await()
+            }
+        }
+        val viewModel = viewModel(repository)
+
+        viewModel.loadWeek("2026-09-07")
+        viewModel.loadWeek("2026-09-14")
+        newResponse.complete(listOf(plan("2026-09-14")))
+        oldResponse.complete(listOf(plan("2026-09-07")))
+
+        val state = viewModel.uiState.value as MyWorkoutPlanUiState.Success
+        assertEquals("2026-09-14", state.weekStart)
+        assertEquals("2026-09-14", state.plans.single().startDate)
+    }
+
+    @Test
+    fun cancellingPreviousLoadDoesNotBecomeAnError() {
+        val repository = TestRepository()
+        var cancellationObserved = false
+        repository.loader = { week ->
+            if (week == "2026-09-07") {
+                try {
+                    awaitCancellation()
+                } catch (exception: kotlinx.coroutines.CancellationException) {
+                    cancellationObserved = true
+                    throw exception
+                }
+            }
+            emptyList()
+        }
+        val viewModel = viewModel(repository)
+
+        viewModel.loadWeek("2026-09-07")
+        viewModel.loadWeek("2026-09-14")
+
+        assertTrue(cancellationObserved)
+        assertTrue(viewModel.uiState.value is MyWorkoutPlanUiState.Empty)
+    }
+
+    @Test
+    fun duplicateLoadingOfSameWeekIsDeduplicated() {
+        val repository = TestRepository()
+        val gate = CompletableDeferred<List<WorkoutPlan>>()
+        repository.loader = {
+            repository.loadCalls++
+            gate.await()
+        }
+        val viewModel = viewModel(repository)
+
+        viewModel.loadWeek("2026-09-14")
+        viewModel.loadWeek("2026-09-14")
+
+        assertEquals(1, repository.loadCalls)
+        gate.complete(emptyList())
+    }
+
+    @Test
+    fun rapidNextWeekClicksKeepTheLatestSelectedWeek() {
+        val repository = TestRepository()
+        val latest = CompletableDeferred<List<WorkoutPlan>>()
+        repository.loader = { week ->
+            if (week == "2026-09-21") latest.await() else awaitCancellation()
+        }
+        val viewModel = viewModel(repository)
+
+        viewModel.loadWeek("2026-09-07")
+        viewModel.nextWeek()
+        viewModel.nextWeek()
+        latest.complete(emptyList())
+
+        assertEquals("2026-09-21", viewModel.uiState.value.weekStart)
+    }
+
+    @Test
+    fun retryUsesTheCurrentlySelectedWeek() {
+        val repository = TestRepository()
+        var attempts = 0
+        repository.loader = {
+            attempts++
+            if (attempts == 1) throw IOException()
+            emptyList()
+        }
+        val viewModel = viewModel(repository)
+
+        viewModel.loadWeek("2026-09-14")
+        viewModel.retry()
+
+        assertEquals(listOf("2026-09-14", "2026-09-14"), repository.requestedWeeks)
+        assertTrue(viewModel.uiState.value is MyWorkoutPlanUiState.Empty)
+    }
+
     private fun viewModel(repository: TestRepository) = MyWorkoutPlanViewModel(
         GetMyWorkoutWeekUseCase(repository),
         CoroutineScope(Dispatchers.Unconfined),
@@ -65,12 +204,15 @@ class MyWorkoutPlanViewModelTest {
 
 private class TestRepository : WorkoutPlanRepository {
     val requestedWeeks = mutableListOf<String>()
+    var loadCalls = 0
     var result = emptyList<WorkoutPlan>()
     var failure: Exception? = null
+    var loader: (suspend (String) -> List<WorkoutPlan>)? = null
 
     override suspend fun getMine() = result
     override suspend fun getMyWeek(weekStart: String): List<WorkoutPlan> {
         requestedWeeks += weekStart
+        loader?.let { return it(weekStart) }
         failure?.let { throw it }
         return result
     }
@@ -88,3 +230,14 @@ private class TestRepository : WorkoutPlanRepository {
     override suspend fun deactivate(id: Long) = Unit
     override suspend fun complete(id: Long) = Unit
 }
+
+private fun plan(startDate: String) = WorkoutPlan(
+    id = startDate.hashCode().toLong(),
+    clientId = 2L,
+    trainerId = 1L,
+    sourceTemplateId = null,
+    startDate = startDate,
+    endDate = null,
+    status = "ACTIVE",
+    days = emptyList(),
+)

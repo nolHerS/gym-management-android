@@ -24,6 +24,7 @@ import com.imanol.gymmanagement.feature.workoutplan.domain.WorkoutPlan
 import com.imanol.gymmanagement.feature.workoutplan.domain.WorkoutPlanExercise
 import java.text.ParsePosition
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Locale
 @Composable
 fun MyWorkoutPlanScreen(
@@ -49,6 +50,8 @@ fun MyWorkoutPlanScreen(
         Text("Mi entrenamiento", style = MaterialTheme.typography.headlineSmall)
         WeekNavigation(
             weekStart = weekStart,
+            isCurrentWeek = isCurrentWeek(weekStart),
+            isLoading = uiState is MyWorkoutPlanUiState.Loading,
             onPrevious = viewModel::previousWeek,
             onNext = viewModel::nextWeek,
             onCurrent = viewModel::thisWeek,
@@ -66,7 +69,12 @@ fun MyWorkoutPlanScreen(
                 if (days.isEmpty()) {
                     Text("No hay entrenamiento esta semana.")
                 } else {
-                    LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    LazyColumn(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                    ) {
                         days.forEach { (day, exercises) ->
                             item(key = "day-$day") {
                                 Text(dayName(day), style = MaterialTheme.typography.titleMedium)
@@ -85,33 +93,72 @@ fun MyWorkoutPlanScreen(
 @Composable
 private fun WeekNavigation(
     weekStart: String,
+    isCurrentWeek: Boolean,
+    isLoading: Boolean,
     onPrevious: () -> Unit,
     onNext: () -> Unit,
     onCurrent: () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
-            text = "Semana del ${formatWeekStart(weekStart)}",
+            text = formatWeekRange(weekStart),
             style = MaterialTheme.typography.titleMedium,
         )
+        if (isCurrentWeek) {
+            Text(
+                text = "Semana actual",
+                style = MaterialTheme.typography.labelLarge,
+            )
+        }
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            GymButton(text = "Anterior", onClick = onPrevious, modifier = Modifier.weight(1f))
-            GymButton(text = "Esta semana", onClick = onCurrent, modifier = Modifier.weight(1f))
-            GymButton(text = "Siguiente", onClick = onNext, modifier = Modifier.weight(1f))
+            GymButton(
+                text = "Anterior",
+                onClick = onPrevious,
+                modifier = Modifier.weight(1f),
+                enabled = !isLoading,
+            )
+            GymButton(
+                text = "Esta semana",
+                onClick = onCurrent,
+                modifier = Modifier.weight(1f),
+                enabled = !isLoading,
+            )
+            GymButton(
+                text = "Siguiente",
+                onClick = onNext,
+                modifier = Modifier.weight(1f),
+                enabled = !isLoading,
+            )
         }
     }
 }
 
-private fun formatWeekStart(value: String): String =
-    SimpleDateFormat("yyyy-MM-dd", Locale.ROOT).let { parser ->
+private fun formatWeekRange(value: String): String {
+    return SimpleDateFormat("yyyy-MM-dd", Locale.ROOT).let { parser ->
         val position = ParsePosition(0)
-        val date = requireNotNull(parser.parse(value, position)) { "Invalid ISO date: $value" }
+        val start = requireNotNull(parser.parse(value, position)) { "Invalid ISO date: $value" }
         require(position.index == value.length) { "Invalid ISO date: $value" }
-        SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(date)
+        val calendar = Calendar.getInstance().apply { time = start }
+        calendar.add(Calendar.DAY_OF_MONTH, 6)
+        val end = calendar.time
+        val locale = Locale.getDefault()
+        val dayFormat = SimpleDateFormat("d", locale)
+        val monthFormat = SimpleDateFormat("MMMM", locale)
+        val yearFormat = SimpleDateFormat("yyyy", locale)
+        val startMonth = monthFormat.format(start)
+        val endMonth = monthFormat.format(end)
+        val startYear = yearFormat.format(start)
+        val endYear = yearFormat.format(end)
+        if (startYear == endYear && startMonth == endMonth) {
+            "${dayFormat.format(start)} - ${dayFormat.format(end)} $endMonth"
+        } else {
+            "${dayFormat.format(start)} $startMonth $startYear - ${dayFormat.format(end)} $endMonth $endYear"
+        }
     }
+}
 
 @Composable
 private fun ExercisePlanCard(exercise: WorkoutPlanExercise) {
@@ -126,7 +173,6 @@ private fun ExercisePlanCard(exercise: WorkoutPlanExercise) {
             )
             Text(text = "${exercise.sets} series × ${exercise.repetitions} repeticiones")
             Text(text = "Descanso: ${exercise.restSeconds} s")
-            Text(text = "Orden: ${exercise.orderIndex}")
         }
     }
 }

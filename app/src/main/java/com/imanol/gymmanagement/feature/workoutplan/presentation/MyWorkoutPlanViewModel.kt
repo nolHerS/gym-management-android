@@ -12,6 +12,7 @@ import java.util.Locale
 import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -40,17 +41,29 @@ fun String.mondayOfWeek(): String {
     return formatIsoDate(calendar)
 }
 
+fun currentWeekStart(): String = formatIsoDate(Calendar.getInstance()).mondayOfWeek()
+
+fun isCurrentWeek(weekStart: String, referenceWeekStart: String = currentWeekStart()): Boolean =
+    weekStart.mondayOfWeek() == referenceWeekStart.mondayOfWeek()
+
+fun weekEnd(weekStart: String): String =
+    parseIsoDate(weekStart.mondayOfWeek())
+        .apply { add(Calendar.DAY_OF_MONTH, 6) }
+        .let(::formatIsoDate)
+
 @HiltViewModel
 class MyWorkoutPlanViewModel @Inject constructor(
     private val getMyWorkoutWeek: GetMyWorkoutWeekUseCase,
 ) : ViewModel() {
-    private val initialWeek = formatIsoDate(Calendar.getInstance()).mondayOfWeek()
+    private val initialWeek = currentWeekStart()
     private val _uiState = MutableStateFlow<MyWorkoutPlanUiState>(
         MyWorkoutPlanUiState.Loading(initialWeek),
     )
     val uiState: StateFlow<MyWorkoutPlanUiState> = _uiState.asStateFlow()
 
     private var providedScope: CoroutineScope? = null
+    private var loadJob: Job? = null
+    private var loadGeneration = 0L
 
     internal constructor(
         getMyWorkoutWeek: GetMyWorkoutWeekUseCase,
@@ -65,18 +78,29 @@ class MyWorkoutPlanViewModel @Inject constructor(
 
     fun loadWeek(weekStart: String) {
         val monday = weekStart.mondayOfWeek()
+        if (_uiState.value is MyWorkoutPlanUiState.Loading &&
+            _uiState.value.weekStart == monday &&
+            loadJob?.isActive == true
+        ) {
+            return
+        }
+        val generation = ++loadGeneration
+        loadJob?.cancel()
         _uiState.value = MyWorkoutPlanUiState.Loading(monday)
-        (providedScope ?: viewModelScope).launch {
+        loadJob = (providedScope ?: viewModelScope).launch {
             try {
-                val plans = getMyWorkoutWeek(monday.toString())
-                _uiState.value = if (plans.isEmpty()) {
-                    MyWorkoutPlanUiState.Empty(monday)
-                } else {
-                    MyWorkoutPlanUiState.Success(monday, plans)
+                val plans = getMyWorkoutWeek(monday)
+                if (generation == loadGeneration) {
+                    _uiState.value = if (plans.isEmpty()) {
+                        MyWorkoutPlanUiState.Empty(monday)
+                    } else {
+                        MyWorkoutPlanUiState.Success(monday, plans)
+                    }
                 }
             } catch (exception: CancellationException) {
                 throw exception
             } catch (throwable: Exception) {
+                if (generation != loadGeneration) return@launch
                 val exception = throwable.toAppException()
                 _uiState.value = if (exception is AppException.Unauthorized) {
                     MyWorkoutPlanUiState.Unauthorized(monday)
