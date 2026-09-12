@@ -80,6 +80,37 @@ class WorkoutPlanStructureViewModelTest {
     }
 
     @Test
+    fun loadIfNeededUsesSeedPlanWithoutNetworkCall() {
+        var calls = 0
+        val viewModel = viewModel(result = {
+            calls++
+            plan
+        })
+
+        viewModel.loadIfNeeded(plan.id, plan)
+
+        assertEquals(0, calls)
+        assertEquals(
+            WorkoutPlanStructureState.Success(plan),
+            viewModel.state.value,
+        )
+    }
+
+    @Test
+    fun loadIfNeededSkipsCallWhenAlreadyLoaded() {
+        var calls = 0
+        val viewModel = viewModel(result = {
+            calls++
+            plan
+        })
+
+        viewModel.load(plan.id)
+        viewModel.loadIfNeeded(plan.id)
+
+        assertEquals(1, calls)
+    }
+
+    @Test
     fun mapsAllSemanticErrors() {
         val failures = listOf(
             AppException.BadRequest(IOException()) to "Los datos del plan no son válidos.",

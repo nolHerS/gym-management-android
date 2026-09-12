@@ -114,6 +114,22 @@ class WorkoutPlanStructureViewModel @Inject constructor(
         }
     }
 
+    fun loadIfNeeded(planId: Long, seedPlan: WorkoutPlan? = null) {
+        val current = (_state.value as? WorkoutPlanStructureState.Success)?.plan
+        if (current?.id == planId) return
+        if (seedPlan?.id == planId) {
+            loadedPlanId = planId
+            _state.value = WorkoutPlanStructureState.Success(seedPlan)
+            return
+        }
+        load(planId)
+    }
+
+    fun setPlan(plan: WorkoutPlan) {
+        loadedPlanId = plan.id
+        _state.value = WorkoutPlanStructureState.Success(plan)
+    }
+
     fun retry() {
         loadedPlanId?.let(::load)
     }

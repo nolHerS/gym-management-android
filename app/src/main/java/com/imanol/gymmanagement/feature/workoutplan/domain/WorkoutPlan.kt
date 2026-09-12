@@ -30,8 +30,16 @@ data class CreateWorkoutPlanRequest(
             "La fecha de fin no es válida."
         endDate != null && parseIsoDate(endDate)!!.before(parseIsoDate(startDate)) ->
             "La fecha de fin debe ser posterior o igual."
+        days.groupBy { it.dayOfWeek }.any { (_, grouped) -> grouped.size > 1 } ->
+            "No puede haber días duplicados."
         days.isEmpty() || days.any { it.dayOfWeek !in 1..7 || it.exercises.isEmpty() } -> "Añade al menos un ejercicio a cada día."
         days.flatMap { it.exercises }.any { it.orderIndex < 1 || it.sets < 1 || it.repetitions < 1 || it.restSeconds < 0 || (it.exerciseId == null && it.sourceTemplateExerciseId == null) } -> "Revisa los valores de los ejercicios."
+        days.any { day ->
+            day.exercises.groupBy { it.orderIndex }.any { (_, grouped) -> grouped.size > 1 }
+        } -> "El orden de ejercicios no puede repetirse en un mismo día."
+        days.any { day ->
+            day.exercises.mapNotNull { it.exerciseId }.groupBy { it }.any { (_, grouped) -> grouped.size > 1 }
+        } -> "El ejercicio ya existe en este día."
         else -> null
     }
 }
