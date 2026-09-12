@@ -21,6 +21,15 @@ data object Home
 data object MyWorkoutPlan
 
 @Serializable
+data object WorkoutToday
+
+@Serializable
+data object WorkoutExecution
+
+@Serializable
+data object WorkoutFinished
+
+@Serializable
 data object ExerciseCategories
 
 @Serializable

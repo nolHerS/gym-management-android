@@ -16,6 +16,9 @@ object RoleGuard {
 
     private val clientRoutes = setOf(
         MyWorkoutPlan::class.qualifiedName,
+        WorkoutToday::class.qualifiedName,
+        WorkoutExecution::class.qualifiedName,
+        WorkoutFinished::class.qualifiedName,
     ).filterNotNull()
 
     private val trainerRoutes = setOf(

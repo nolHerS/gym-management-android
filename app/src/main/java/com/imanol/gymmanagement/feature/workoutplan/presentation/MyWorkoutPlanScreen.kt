@@ -30,6 +30,7 @@ import java.util.Locale
 fun MyWorkoutPlanScreen(
     viewModel: MyWorkoutPlanViewModel,
     onUnauthorized: () -> Unit,
+    onNavigateToWorkoutToday: () -> Unit,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -56,6 +57,13 @@ fun MyWorkoutPlanScreen(
             onNext = viewModel::nextWeek,
             onCurrent = viewModel::thisWeek,
         )
+        if (isCurrentWeek(weekStart)) {
+            GymButton(
+                text = "Entrenamiento de hoy",
+                onClick = onNavigateToWorkoutToday,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
         when (val state = uiState) {
             is MyWorkoutPlanUiState.Loading -> GymLoading()
             is MyWorkoutPlanUiState.Empty -> Text("No hay entrenamiento esta semana.")

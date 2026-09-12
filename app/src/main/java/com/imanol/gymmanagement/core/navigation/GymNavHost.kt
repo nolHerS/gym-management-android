@@ -3,6 +3,9 @@ package com.imanol.gymmanagement.core.navigation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -10,6 +13,7 @@ import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.toRoute
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.imanol.gymmanagement.feature.auth.presentation.LoginScreen
 import com.imanol.gymmanagement.feature.auth.presentation.SessionState
 import com.imanol.gymmanagement.feature.auth.presentation.LoginViewModel
@@ -33,6 +37,9 @@ import com.imanol.gymmanagement.feature.workout.presentation.WorkoutTemplateDeta
 import com.imanol.gymmanagement.feature.workout.presentation.WorkoutTemplateDetailViewModel
 import com.imanol.gymmanagement.feature.workout.presentation.WorkoutTemplateFormScreen
 import com.imanol.gymmanagement.feature.workoutplan.presentation.*
+import com.imanol.gymmanagement.feature.workoutexecution.domain.WorkoutExecutionSnapshot
+import com.imanol.gymmanagement.feature.workoutexecution.domain.WorkoutExecutionState
+import com.imanol.gymmanagement.feature.workoutexecution.presentation.*
 import com.imanol.gymmanagement.feature.nutrition.presentation.*
 
 private fun isAuthenticationRoute(route: String?): Boolean =
@@ -56,6 +63,7 @@ fun GymNavHost(
     workoutPlanViewModel: WorkoutPlanViewModel,
     workoutPlanStructureViewModel: WorkoutPlanStructureViewModel,
     myWorkoutPlanViewModel: MyWorkoutPlanViewModel,
+    workoutTodayViewModel: WorkoutTodayViewModel,
     nutritionPlanViewModel: NutritionPlanViewModel,
     foodViewModel: FoodViewModel,
     myNutritionViewModel: MyNutritionViewModel,
@@ -64,6 +72,8 @@ fun GymNavHost(
     val sessionState by loginViewModel.sessionState.collectAsStateWithLifecycle()
     val homeState by homeViewModel.uiState.collectAsStateWithLifecycle()
     val backStackEntry by navController.currentBackStackEntryAsState()
+    var pendingWorkoutSnapshot by remember { mutableStateOf<WorkoutExecutionSnapshot?>(null) }
+    var finishedWorkoutState by remember { mutableStateOf<WorkoutExecutionState?>(null) }
 
     LaunchedEffect(sessionState, backStackEntry) {
         if (
@@ -155,7 +165,53 @@ fun GymNavHost(
                 MyWorkoutPlanScreen(
                     viewModel = myWorkoutPlanViewModel,
                     onUnauthorized = {},
+                    onNavigateToWorkoutToday = { navController.navigate(WorkoutToday) },
                 )
+            }
+            composable<WorkoutToday> {
+                WorkoutTodayScreen(
+                    viewModel = workoutTodayViewModel,
+                    onUnauthorized = {},
+                    onStart = { snapshot ->
+                        pendingWorkoutSnapshot = snapshot
+                        navController.navigate(WorkoutExecution)
+                    },
+                )
+            }
+            composable<WorkoutExecution> {
+                val snapshot = pendingWorkoutSnapshot
+                val executionViewModel = snapshot?.let {
+                    viewModel<WorkoutExecutionViewModel>(
+                        key = "workout-execution-${it.startedAt}",
+                        factory = WorkoutExecutionViewModelFactory(it),
+                    )
+                }
+                WorkoutExecutionScreen(
+                    viewModel = executionViewModel,
+                    onFinished = { state ->
+                        finishedWorkoutState = state
+                        navController.navigate(WorkoutFinished) {
+                            popUpTo(WorkoutExecution) { inclusive = true }
+                        }
+                    },
+                    onCancelled = {
+                        navController.popBackStack(WorkoutToday, false)
+                    },
+                    onBack = {
+                        navController.popBackStack(WorkoutToday, false)
+                    },
+                )
+            }
+            composable<WorkoutFinished> {
+                val state = finishedWorkoutState
+                if (state == null) {
+                    navController.popBackStack(WorkoutToday, false)
+                } else {
+                    WorkoutFinishedScreen(
+                        state = state,
+                        onDone = { navController.popBackStack(WorkoutToday, false) },
+                    )
+                }
             }
             composable<ExerciseCategories> {
                 ExerciseCategoriesScreen(
