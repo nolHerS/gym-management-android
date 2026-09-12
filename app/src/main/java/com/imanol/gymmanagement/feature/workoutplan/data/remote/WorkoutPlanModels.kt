@@ -8,7 +8,12 @@ import kotlinx.serialization.Serializable
 @Serializable data class WorkoutPlanRequest(val sourceTemplateId: Long? = null, val startDate: String, val endDate: String? = null, val days: List<DayRequest>)
 @Serializable data class DayRequest(val dayOfWeek: Int, val exercises: List<ExerciseRequest> = emptyList())
 @Serializable data class ExerciseRequest(val sourceTemplateExerciseId: Long? = null, val exerciseId: Long? = null, val orderIndex: Int, val sets: Int, val repetitions: Int, val restSeconds: Int)
-@Serializable data class RemoteUpdateWorkoutPlanRequest(val startDate: String, val endDate: String?, val status: String)
+@Serializable
+data class RemoteUpdateWorkoutPlanRequest(
+    val startDate: String? = null,
+    val endDate: String? = null,
+    val status: String? = null,
+)
 @Serializable data class WorkoutPlanResponse(val id: Long, val clientId: Long, val trainerId: Long, val sourceTemplateId: Long? = null, val startDate: String, val endDate: String? = null, val status: String, val days: List<WorkoutPlanDayResponse> = emptyList())
 @Serializable data class WorkoutPlanDayResponse(val id: Long, val dayOfWeek: Int, val exercises: List<WorkoutPlanExerciseResponse> = emptyList())
 @Serializable data class WorkoutPlanExerciseResponse(val id: Long, val exercise: ExerciseResponse? = null, val sourceTemplateExerciseId: Long? = null, val orderIndex: Int, val sets: Int, val repetitions: Int, val restSeconds: Int)

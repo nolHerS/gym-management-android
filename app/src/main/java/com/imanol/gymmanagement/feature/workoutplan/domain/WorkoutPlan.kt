@@ -42,4 +42,8 @@ private fun parseIsoDate(value: String) =
             format.parse(value, position)?.takeIf { position.index == value.length }
         }
     }
-data class UpdateWorkoutPlanRequest(val startDate: String, val endDate: String?, val status: String)
+data class UpdateWorkoutPlanRequest(
+    val startDate: String? = null,
+    val endDate: String? = null,
+    val status: String? = null,
+)

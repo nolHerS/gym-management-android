@@ -19,13 +19,23 @@ interface WorkoutPlanApi {
     @PATCH("api/workout-plans/{id}")
     suspend fun update(@Path("id") id: Long, @Body request: RemoteUpdateWorkoutPlanRequest): ApiResponse<WorkoutPlanResponse>
     @POST("api/workout-plans/{planId}/days")
-    suspend fun addDay(@Path("planId") planId: Long, @Body request: DayRequest): ApiResponse<WorkoutPlanResponse>
+    suspend fun addDay(
+        @Path("planId") planId: Long,
+        @Body request: DayRequest,
+    ): ApiResponse<WorkoutPlanDayResponse>
     @DELETE("api/workout-plans/{planId}/days/{dayOfWeek}")
     suspend fun deleteDay(@Path("planId") planId: Long, @Path("dayOfWeek") day: Int): ApiResponse<Unit>
     @POST("api/workout-plans/{planId}/days/{dayOfWeek}/exercises")
-    suspend fun addExercise(@Path("planId") planId: Long, @Path("dayOfWeek") day: Int, @Body request: ExerciseRequest): ApiResponse<WorkoutPlanResponse>
+    suspend fun addExercise(
+        @Path("planId") planId: Long,
+        @Path("dayOfWeek") day: Int,
+        @Body request: ExerciseRequest,
+    ): ApiResponse<WorkoutPlanExerciseResponse>
     @PUT("api/workout-plans/exercises/{id}")
-    suspend fun updateExercise(@Path("id") id: Long, @Body request: ExerciseRequest): ApiResponse<WorkoutPlanResponse>
+    suspend fun updateExercise(
+        @Path("id") id: Long,
+        @Body request: ExerciseRequest,
+    ): ApiResponse<WorkoutPlanExerciseResponse>
     @DELETE("api/workout-plans/exercises/{id}")
     suspend fun deleteExercise(@Path("id") id: Long): ApiResponse<Unit>
     @PATCH("api/workout-plans/{id}/deactivate")

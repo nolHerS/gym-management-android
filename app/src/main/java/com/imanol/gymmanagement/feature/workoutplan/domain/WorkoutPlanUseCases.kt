@@ -30,6 +30,51 @@ class CreateWorkoutPlanUseCase @Inject constructor(private val repository: Worko
 class UpdateWorkoutPlanUseCase @Inject constructor(private val repository: WorkoutPlanRepository) {
     suspend operator fun invoke(id: Long, request: UpdateWorkoutPlanRequest) = repository.update(id, request)
 }
+
+class AddWorkoutPlanDayUseCase @Inject constructor(
+    private val repository: WorkoutPlanRepository,
+) {
+    suspend operator fun invoke(
+        planId: Long,
+        request: WorkoutPlanDayRequest,
+    ) = repository.addDay(planId, request)
+}
+
+class DeleteWorkoutPlanDayUseCase @Inject constructor(
+    private val repository: WorkoutPlanRepository,
+) {
+    suspend operator fun invoke(planId: Long, dayOfWeek: Int) {
+        repository.deleteDay(planId, dayOfWeek)
+    }
+}
+
+class AddWorkoutPlanExerciseUseCase @Inject constructor(
+    private val repository: WorkoutPlanRepository,
+) {
+    suspend operator fun invoke(
+        planId: Long,
+        dayOfWeek: Int,
+        request: WorkoutPlanExerciseRequest,
+    ) = repository.addExercise(planId, dayOfWeek, request)
+}
+
+class UpdateWorkoutPlanExerciseUseCase @Inject constructor(
+    private val repository: WorkoutPlanRepository,
+) {
+    suspend operator fun invoke(
+        exerciseId: Long,
+        request: WorkoutPlanExerciseRequest,
+    ) = repository.updateExercise(exerciseId, request)
+}
+
+class DeleteWorkoutPlanExerciseUseCase @Inject constructor(
+    private val repository: WorkoutPlanRepository,
+) {
+    suspend operator fun invoke(exerciseId: Long) {
+        repository.deleteExercise(exerciseId)
+    }
+}
+
 class DeactivateWorkoutPlanUseCase @Inject constructor(private val repository: WorkoutPlanRepository) {
     suspend operator fun invoke(id: Long) = repository.deactivate(id)
 }

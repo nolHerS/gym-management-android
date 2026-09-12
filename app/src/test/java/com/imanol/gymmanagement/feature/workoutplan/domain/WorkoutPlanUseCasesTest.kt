@@ -74,10 +74,13 @@ private class FakeRepository : WorkoutPlanRepository {
     override suspend fun getForClient(clientId: Long) = plans
     override suspend fun get(id: Long) = plan
     override suspend fun update(id: Long, request: UpdateWorkoutPlanRequest) = plan
-    override suspend fun addDay(planId: Long, request: WorkoutPlanDayRequest) = plan
+    override suspend fun addDay(planId: Long, request: WorkoutPlanDayRequest) =
+        WorkoutPlanDay(1L, request.dayOfWeek, emptyList())
     override suspend fun deleteDay(planId: Long, day: Int) = Unit
-    override suspend fun addExercise(planId: Long, day: Int, request: WorkoutPlanExerciseRequest) = plan
-    override suspend fun updateExercise(id: Long, request: WorkoutPlanExerciseRequest) = plan
+    override suspend fun addExercise(planId: Long, day: Int, request: WorkoutPlanExerciseRequest) =
+        WorkoutPlanExercise(1L, null, request.sourceTemplateExerciseId, request.orderIndex, request.sets, request.repetitions, request.restSeconds)
+    override suspend fun updateExercise(id: Long, request: WorkoutPlanExerciseRequest) =
+        WorkoutPlanExercise(id, null, request.sourceTemplateExerciseId, request.orderIndex, request.sets, request.repetitions, request.restSeconds)
     override suspend fun deleteExercise(id: Long) = Unit
     override suspend fun deactivate(id: Long) = Unit
     override suspend fun complete(id: Long) = Unit

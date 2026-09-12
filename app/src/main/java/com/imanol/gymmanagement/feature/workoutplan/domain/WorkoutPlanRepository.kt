@@ -8,10 +8,10 @@ interface WorkoutPlanRepository {
     suspend fun getForClient(clientId: Long): List<WorkoutPlan>
     suspend fun get(id: Long): WorkoutPlan
     suspend fun update(id: Long, request: UpdateWorkoutPlanRequest): WorkoutPlan
-    suspend fun addDay(planId: Long, request: WorkoutPlanDayRequest): WorkoutPlan
+    suspend fun addDay(planId: Long, request: WorkoutPlanDayRequest): WorkoutPlanDay
     suspend fun deleteDay(planId: Long, day: Int)
-    suspend fun addExercise(planId: Long, day: Int, request: WorkoutPlanExerciseRequest): WorkoutPlan
-    suspend fun updateExercise(id: Long, request: WorkoutPlanExerciseRequest): WorkoutPlan
+    suspend fun addExercise(planId: Long, day: Int, request: WorkoutPlanExerciseRequest): WorkoutPlanExercise
+    suspend fun updateExercise(id: Long, request: WorkoutPlanExerciseRequest): WorkoutPlanExercise
     suspend fun deleteExercise(id: Long)
     suspend fun deactivate(id: Long)
     suspend fun complete(id: Long)
