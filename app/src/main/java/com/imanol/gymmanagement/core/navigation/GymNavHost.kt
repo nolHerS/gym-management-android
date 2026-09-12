@@ -54,6 +54,7 @@ fun GymNavHost(
     workoutTemplatesViewModel: WorkoutTemplatesViewModel,
     workoutTemplateDetailViewModel: WorkoutTemplateDetailViewModel,
     workoutPlanViewModel: WorkoutPlanViewModel,
+    workoutPlanStructureViewModel: WorkoutPlanStructureViewModel,
     myWorkoutPlanViewModel: MyWorkoutPlanViewModel,
     nutritionPlanViewModel: NutritionPlanViewModel,
     foodViewModel: FoodViewModel,
@@ -216,6 +217,7 @@ fun GymNavHost(
                 WorkoutPlanDetailScreen(
                     route.planId,
                     workoutPlanViewModel,
+                    workoutPlanStructureViewModel,
                     canManage = (homeState as? HomeUiState.Success)?.user?.role == "TRAINER",
                     onEdit = { navController.navigate(WorkoutPlanForm((homeState as? HomeUiState.Success)?.user?.id ?: 0L, route.planId)) },
                     onUnauthorized = {},

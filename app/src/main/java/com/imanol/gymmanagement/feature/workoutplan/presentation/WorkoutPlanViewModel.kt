@@ -266,6 +266,10 @@ class WorkoutPlanViewModel @Inject constructor(
         if ((_detail.value as? WorkoutPlanDetailState.Success)?.plan?.id != id) loadDetail(id)
     }
 
+    fun setDetailPlan(plan: WorkoutPlan) {
+        _detail.value = WorkoutPlanDetailState.Success(plan)
+    }
+
     fun clearMutation() {
         _mutation.value = WorkoutPlanMutationState.Idle
     }

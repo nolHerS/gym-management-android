@@ -25,16 +25,6 @@ import com.imanol.gymmanagement.feature.workoutplan.domain.WorkoutPlanExercise
 import java.text.ParsePosition
 import java.text.SimpleDateFormat
 import java.util.Locale
-private val dayNames = mapOf(
-    1 to "LUNES",
-    2 to "MARTES",
-    3 to "MIÉRCOLES",
-    4 to "JUEVES",
-    5 to "VIERNES",
-    6 to "SÁBADO",
-    7 to "DOMINGO",
-)
-
 @Composable
 fun MyWorkoutPlanScreen(
     viewModel: MyWorkoutPlanViewModel,
@@ -79,7 +69,7 @@ fun MyWorkoutPlanScreen(
                     LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                         days.forEach { (day, exercises) ->
                             item(key = "day-$day") {
-                                Text(dayNames.getValue(day), style = MaterialTheme.typography.titleMedium)
+                                Text(dayName(day), style = MaterialTheme.typography.titleMedium)
                             }
                             items(exercises, key = { it.id }) { exercise ->
                                 ExercisePlanCard(exercise)

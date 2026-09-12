@@ -12,6 +12,7 @@ import com.imanol.gymmanagement.feature.client.presentation.ClientDetailViewMode
 import com.imanol.gymmanagement.feature.workout.presentation.WorkoutTemplatesViewModel
 import com.imanol.gymmanagement.feature.workout.presentation.WorkoutTemplateDetailViewModel
 import com.imanol.gymmanagement.feature.workoutplan.presentation.WorkoutPlanViewModel
+import com.imanol.gymmanagement.feature.workoutplan.presentation.WorkoutPlanStructureViewModel
 import com.imanol.gymmanagement.feature.workoutplan.presentation.MyWorkoutPlanViewModel
 import com.imanol.gymmanagement.feature.nutrition.presentation.FoodViewModel
 import com.imanol.gymmanagement.feature.nutrition.presentation.MyNutritionViewModel
@@ -29,6 +30,7 @@ fun GymApp(
     workoutTemplatesViewModel: WorkoutTemplatesViewModel,
     workoutTemplateDetailViewModel: WorkoutTemplateDetailViewModel,
     workoutPlanViewModel: WorkoutPlanViewModel,
+    workoutPlanStructureViewModel: WorkoutPlanStructureViewModel,
     myWorkoutPlanViewModel: MyWorkoutPlanViewModel,
     nutritionPlanViewModel: NutritionPlanViewModel,
     foodViewModel: FoodViewModel,
@@ -46,6 +48,7 @@ fun GymApp(
             workoutTemplatesViewModel,
             workoutTemplateDetailViewModel,
             workoutPlanViewModel,
+            workoutPlanStructureViewModel,
             myWorkoutPlanViewModel,
             nutritionPlanViewModel,
             foodViewModel,

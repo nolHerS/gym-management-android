@@ -16,6 +16,7 @@ import com.imanol.gymmanagement.feature.client.presentation.ClientDetailViewMode
 import com.imanol.gymmanagement.feature.workout.presentation.WorkoutTemplatesViewModel
 import com.imanol.gymmanagement.feature.workout.presentation.WorkoutTemplateDetailViewModel
 import com.imanol.gymmanagement.feature.workoutplan.presentation.WorkoutPlanViewModel
+import com.imanol.gymmanagement.feature.workoutplan.presentation.WorkoutPlanStructureViewModel
 import com.imanol.gymmanagement.feature.workoutplan.presentation.MyWorkoutPlanViewModel
 import com.imanol.gymmanagement.feature.nutrition.presentation.FoodViewModel
 import com.imanol.gymmanagement.feature.nutrition.presentation.MyNutritionViewModel
@@ -34,6 +35,7 @@ class MainActivity : Hilt_MainActivity() {
     private val workoutTemplatesViewModel: WorkoutTemplatesViewModel by viewModels()
     private val workoutTemplateDetailViewModel: WorkoutTemplateDetailViewModel by viewModels()
     private val workoutPlanViewModel: WorkoutPlanViewModel by viewModels()
+    private val workoutPlanStructureViewModel: WorkoutPlanStructureViewModel by viewModels()
     private val myWorkoutPlanViewModel: MyWorkoutPlanViewModel by viewModels()
     private val nutritionPlanViewModel: NutritionPlanViewModel by viewModels()
     private val foodViewModel: FoodViewModel by viewModels()
@@ -54,6 +56,7 @@ class MainActivity : Hilt_MainActivity() {
                 workoutTemplatesViewModel,
                 workoutTemplateDetailViewModel,
                 workoutPlanViewModel,
+                workoutPlanStructureViewModel,
                 myWorkoutPlanViewModel,
                 nutritionPlanViewModel,
                 foodViewModel,

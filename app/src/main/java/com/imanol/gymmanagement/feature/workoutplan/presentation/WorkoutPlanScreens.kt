@@ -8,6 +8,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.imanol.gymmanagement.feature.workoutplan.domain.WorkoutPlanExercise
 
 @Composable
 fun WorkoutPlansScreen(clientId: Long, viewModel: WorkoutPlanViewModel, onPlanSelected: (Long) -> Unit, onUnauthorized: () -> Unit, onCreate: () -> Unit = {}) {
@@ -158,14 +159,21 @@ fun WorkoutPlanFormScreen(clientId: Long, planId: Long?, viewModel: WorkoutPlanV
 fun WorkoutPlanDetailScreen(
     planId: Long,
     viewModel: WorkoutPlanViewModel,
+    structureViewModel: WorkoutPlanStructureViewModel,
     canManage: Boolean,
     onEdit: (Long) -> Unit,
     onUnauthorized: () -> Unit,
 ) {
     val state by viewModel.detail.collectAsStateWithLifecycle()
+    val structureState by structureViewModel.state.collectAsStateWithLifecycle()
     val mutation by viewModel.mutation.collectAsStateWithLifecycle()
     var confirmation by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(planId) { viewModel.loadDetailIfNeeded(planId) }
+    LaunchedEffect(planId) { structureViewModel.load(planId) }
+    LaunchedEffect(structureState) {
+        if (structureState is WorkoutPlanStructureState.Success) {
+            viewModel.setDetailPlan((structureState as WorkoutPlanStructureState.Success).plan)
+        }
+    }
     LaunchedEffect(state) {
         if (state is WorkoutPlanDetailState.Unauthorized) onUnauthorized()
     }
@@ -190,21 +198,36 @@ fun WorkoutPlanDetailScreen(
             },
         )
     }
-    Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Detalle del plan", style = MaterialTheme.typography.headlineSmall)
-        when (val s = state) {
-            WorkoutPlanDetailState.Loading -> CircularProgressIndicator()
-            is WorkoutPlanDetailState.Error -> Text(s.message)
-            WorkoutPlanDetailState.Unauthorized -> Unit
-            is WorkoutPlanDetailState.Success -> {
-                Text("Estado: ${s.plan.status}")
-                Text("Desde: ${s.plan.startDate}")
-                s.plan.endDate?.let { Text("Hasta: $it") }
-                if (canManage && s.plan.status == "ACTIVE") {
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        item { Text("Detalle del plan", style = MaterialTheme.typography.headlineSmall) }
+        when (val structure = structureState) {
+            WorkoutPlanStructureState.Idle,
+            WorkoutPlanStructureState.Loading -> item { CircularProgressIndicator() }
+            is WorkoutPlanStructureState.Error -> item {
+                Text(structure.message, color = MaterialTheme.colorScheme.error)
+                Button(onClick = structureViewModel::retry) { Text("Reintentar") }
+            }
+            is WorkoutPlanStructureState.Success -> {
+                val plan = (state as? WorkoutPlanDetailState.Success)
+                    ?.takeIf { it.plan.id == planId }
+                    ?.plan
+                    ?: structure.plan
+                item {
+                    Text("Estado: ${plan.status}")
+                    Text("Desde: ${plan.startDate}")
+                    plan.endDate?.let { Text("Hasta: $it") }
+                }
+                item {
+                    if (canManage && plan.status == "ACTIVE") {
                     val mutating = mutation is WorkoutPlanMutationState.Completing ||
                         mutation is WorkoutPlanMutationState.Deactivating
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(enabled = !mutating, onClick = { onEdit(s.plan.clientId) }) {
+                        Button(enabled = !mutating, onClick = { onEdit(plan.clientId) }) {
                             Text("Editar")
                         }
                         Button(enabled = !mutating, onClick = { confirmation = "complete" }) {
@@ -215,15 +238,63 @@ fun WorkoutPlanDetailScreen(
                         }
                     }
                 }
-                when (val operation = mutation) {
-                    is WorkoutPlanMutationState.Success -> Text(operation.message)
-                    is WorkoutPlanMutationState.Error -> Text(operation.message, color = MaterialTheme.colorScheme.error)
-                    WorkoutPlanMutationState.Completing -> CircularProgressIndicator()
-                    WorkoutPlanMutationState.Deactivating -> CircularProgressIndicator()
-                    WorkoutPlanMutationState.Idle -> Unit
                 }
-                s.plan.days.forEach { day -> Text("Día ${day.dayOfWeek}: ${day.exercises.size} ejercicios") }
+                item {
+                    when (val operation = mutation) {
+                        is WorkoutPlanMutationState.Success -> Text(operation.message)
+                        is WorkoutPlanMutationState.Error -> Text(
+                            operation.message,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                        WorkoutPlanMutationState.Completing,
+                        WorkoutPlanMutationState.Deactivating -> CircularProgressIndicator()
+                        WorkoutPlanMutationState.Idle -> Unit
+                    }
+                }
+                items(
+                    plan.days.sortedBy { it.dayOfWeek },
+                    key = { it.id },
+                ) { day ->
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(dayName(day.dayOfWeek), style = MaterialTheme.typography.titleLarge)
+                        if (day.exercises.isEmpty()) {
+                            Text("Sin ejercicios")
+                        } else {
+                            day.exercises
+                                .sortedBy { it.orderIndex }
+                                .forEach { exercise ->
+                                    WorkoutPlanExerciseCard(exercise)
+                                }
+                        }
+                    }
+                }
             }
+        }
+    }
+}
+
+fun dayName(dayOfWeek: Int): String = when (dayOfWeek) {
+    1 -> "Lunes"
+    2 -> "Martes"
+    3 -> "Miércoles"
+    4 -> "Jueves"
+    5 -> "Viernes"
+    6 -> "Sábado"
+    7 -> "Domingo"
+    else -> "Día $dayOfWeek"
+}
+
+@Composable
+private fun WorkoutPlanExerciseCard(exercise: WorkoutPlanExercise) {
+    Card {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(exercise.exercise?.name ?: "Ejercicio no disponible")
+            exercise.exercise?.categoryName
+                ?.takeIf { it.isNotBlank() }
+                ?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+            Text("${exercise.sets} series × ${exercise.repetitions} repeticiones")
+            Text("Descanso: ${exercise.restSeconds} s")
+            Text("Orden: ${exercise.orderIndex}")
         }
     }
 }
