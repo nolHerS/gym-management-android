@@ -166,6 +166,7 @@ fun WorkoutPlanDetailScreen(
 ) {
     val state by viewModel.detail.collectAsStateWithLifecycle()
     val structureState by structureViewModel.state.collectAsStateWithLifecycle()
+    val structureMutation by structureViewModel.mutation.collectAsStateWithLifecycle()
     val mutation by viewModel.mutation.collectAsStateWithLifecycle()
     var confirmation by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(planId) { structureViewModel.load(planId) }
@@ -179,19 +180,47 @@ fun WorkoutPlanDetailScreen(
     }
     if (confirmation != null) {
         val complete = confirmation == "complete"
+        val deleteDay = confirmation?.startsWith("delete-day:") == true
+        val selectedDay = confirmation?.substringAfter("delete-day:")?.toIntOrNull()
         AlertDialog(
             onDismissRequest = { confirmation = null },
-            title = { Text(if (complete) "Completar plan" else "Desactivar plan") },
+            title = {
+                Text(
+                    when {
+                        complete -> "Completar plan"
+                        deleteDay -> "Eliminar día"
+                        else -> "Desactivar plan"
+                    },
+                )
+            },
             text = {
-                Text(if (complete) "¿Quieres marcar este plan como completado?" else "¿Quieres desactivar este plan?")
+                Text(
+                    when {
+                        complete -> "¿Quieres marcar este plan como completado?"
+                        deleteDay -> "¿Quieres eliminar el día? Se eliminarán también los ejercicios asociados."
+                        else -> "¿Quieres desactivar este plan?"
+                    },
+                )
             },
             confirmButton = {
                 TextButton(
                     onClick = {
                         confirmation = null
-                        if (complete) viewModel.complete(planId) else viewModel.deactivate(planId)
+                        when {
+                            complete -> viewModel.complete(planId)
+                            deleteDay && selectedDay != null -> structureViewModel.deleteDay(planId, selectedDay)
+                            else -> viewModel.deactivate(planId)
+                        }
                     },
-                ) { Text(if (complete) "Completar" else "Desactivar") }
+                ) {
+                    Text(
+                        when {
+                            complete -> "Completar"
+                            deleteDay -> "Eliminar"
+                            else -> "Desactivar"
+                        },
+                    )
+                }
             },
             dismissButton = {
                 TextButton(onClick = { confirmation = null }) { Text("Cancelar") }
@@ -225,7 +254,9 @@ fun WorkoutPlanDetailScreen(
                 item {
                     if (canManage && plan.status == "ACTIVE") {
                     val mutating = mutation is WorkoutPlanMutationState.Completing ||
-                        mutation is WorkoutPlanMutationState.Deactivating
+                        mutation is WorkoutPlanMutationState.Deactivating ||
+                        structureMutation is WorkoutPlanStructureMutationState.AddingDay ||
+                        structureMutation is WorkoutPlanStructureMutationState.DeletingDay
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(enabled = !mutating, onClick = { onEdit(plan.clientId) }) {
                             Text("Editar")
@@ -250,6 +281,16 @@ fun WorkoutPlanDetailScreen(
                         WorkoutPlanMutationState.Deactivating -> CircularProgressIndicator()
                         WorkoutPlanMutationState.Idle -> Unit
                     }
+                    when (val operation = structureMutation) {
+                        is WorkoutPlanStructureMutationState.Success -> Text(operation.message)
+                        is WorkoutPlanStructureMutationState.Error -> Text(
+                            operation.message,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                        WorkoutPlanStructureMutationState.AddingDay,
+                        WorkoutPlanStructureMutationState.DeletingDay -> CircularProgressIndicator()
+                        WorkoutPlanStructureMutationState.Idle -> Unit
+                    }
                 }
                 items(
                     plan.days.sortedBy { it.dayOfWeek },
@@ -257,6 +298,15 @@ fun WorkoutPlanDetailScreen(
                 ) { day ->
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text(dayName(day.dayOfWeek), style = MaterialTheme.typography.titleLarge)
+                        if (canManage && plan.status == "ACTIVE") {
+                            OutlinedButton(
+                                enabled = structureMutation !is WorkoutPlanStructureMutationState.AddingDay &&
+                                    structureMutation !is WorkoutPlanStructureMutationState.DeletingDay,
+                                onClick = { confirmation = "delete-day:${day.dayOfWeek}" },
+                            ) {
+                                Text("Eliminar día")
+                            }
+                        }
                         if (day.exercises.isEmpty()) {
                             Text("Sin ejercicios")
                         } else {
