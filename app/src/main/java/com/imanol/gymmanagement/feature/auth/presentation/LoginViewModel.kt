@@ -113,10 +113,11 @@ class LoginViewModel @Inject constructor(
         }
     }
 
-    fun logout() {
+    fun logout(onCompleted: () -> Unit = {}) {
         viewModelScope.launch {
             sessionManager.logout()
             _uiState.value = LoginUiState()
+            onCompleted()
         }
     }
 

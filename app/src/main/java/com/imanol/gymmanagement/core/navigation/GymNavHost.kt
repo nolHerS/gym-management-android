@@ -142,9 +142,10 @@ fun GymNavHost(
                     onNavigateToFoods = { navController.navigate(Foods) },
                     onNavigateToMyNutrition = { navController.navigate(MyNutrition) },
                     onLogout = {
-                        loginViewModel.logout()
-                        navController.navigate(Login) {
-                            popUpTo(Home) { inclusive = true }
+                        loginViewModel.logout {
+                            navController.navigate(Login) {
+                                popUpTo(Home) { inclusive = true }
+                            }
                         }
                     },
                 )
@@ -153,9 +154,10 @@ fun GymNavHost(
                 MyWorkoutPlanScreen(
                     viewModel = myWorkoutPlanViewModel,
                     onUnauthorized = {
-                        loginViewModel.logout()
-                        navController.navigate(Login) {
-                            popUpTo(MainGraph) { inclusive = true }
+                        loginViewModel.logout {
+                            navController.navigate(Login) {
+                                popUpTo(MainGraph) { inclusive = true }
+                            }
                         }
                     },
                 )
@@ -167,9 +169,10 @@ fun GymNavHost(
                         navController.navigate(Exercises(categoryId))
                     },
                     onUnauthorized = {
-                        loginViewModel.logout()
-                        navController.navigate(Login) {
-                            popUpTo(MainGraph) { inclusive = true }
+                        loginViewModel.logout {
+                            navController.navigate(Login) {
+                                popUpTo(MainGraph) { inclusive = true }
+                            }
                         }
                     },
                 )
@@ -183,9 +186,10 @@ fun GymNavHost(
                         navController.navigate(ExerciseDetail(exerciseId))
                     },
                     onUnauthorized = {
-                        loginViewModel.logout()
-                        navController.navigate(Login) {
-                            popUpTo(MainGraph) { inclusive = true }
+                        loginViewModel.logout {
+                            navController.navigate(Login) {
+                                popUpTo(MainGraph) { inclusive = true }
+                            }
                         }
                     },
                 )
@@ -196,9 +200,10 @@ fun GymNavHost(
                     exerciseId = route.exerciseId,
                     viewModel = exerciseDetailViewModel,
                     onUnauthorized = {
-                        loginViewModel.logout()
-                        navController.navigate(Login) {
-                            popUpTo(MainGraph) { inclusive = true }
+                        loginViewModel.logout {
+                            navController.navigate(Login) {
+                                popUpTo(MainGraph) { inclusive = true }
+                            }
                         }
                     },
                 )
@@ -210,9 +215,10 @@ fun GymNavHost(
                         navController.navigate(ClientDetail(clientId))
                     },
                     onUnauthorized = {
-                        loginViewModel.logout()
-                        navController.navigate(Login) {
-                            popUpTo(MainGraph) { inclusive = true }
+                        loginViewModel.logout {
+                            navController.navigate(Login) {
+                                popUpTo(MainGraph) { inclusive = true }
+                            }
                         }
                     },
                 )
@@ -225,9 +231,10 @@ fun GymNavHost(
                     onWorkoutPlans = { navController.navigate(WorkoutPlans(it)) },
                     onNutritionPlans = { navController.navigate(NutritionPlans(it)) },
                     onUnauthorized = {
-                        loginViewModel.logout()
-                        navController.navigate(Login) {
-                            popUpTo(MainGraph) { inclusive = true }
+                        loginViewModel.logout {
+                            navController.navigate(Login) {
+                                popUpTo(MainGraph) { inclusive = true }
+                            }
                         }
                     },
                 )
@@ -235,7 +242,9 @@ fun GymNavHost(
             composable<WorkoutPlans> { entry ->
                 val route = entry.toRoute<WorkoutPlans>()
                 WorkoutPlansScreen(route.clientId, workoutPlanViewModel, { navController.navigate(WorkoutPlanDetail(it)) }, {
-                    loginViewModel.logout(); navController.navigate(Login) { popUpTo(MainGraph) { inclusive = true } }
+                    loginViewModel.logout {
+                        navController.navigate(Login) { popUpTo(MainGraph) { inclusive = true } }
+                    }
                 }, { navController.navigate(CreateWorkoutPlan(route.clientId)) })
             }
             composable<CreateWorkoutPlan> { entry ->
@@ -245,7 +254,9 @@ fun GymNavHost(
             composable<WorkoutPlanDetail> { entry ->
                 val route = entry.toRoute<WorkoutPlanDetail>()
                 WorkoutPlanDetailScreen(route.planId, workoutPlanViewModel) {
-                    loginViewModel.logout(); navController.navigate(Login) { popUpTo(MainGraph) { inclusive = true } }
+                    loginViewModel.logout {
+                        navController.navigate(Login) { popUpTo(MainGraph) { inclusive = true } }
+                    }
                 }
             }
             composable<NutritionPlans> { entry ->
@@ -257,9 +268,10 @@ fun GymNavHost(
                     onPlanSelected = { navController.navigate(NutritionPlanDetail(it)) },
                     onCreate = { navController.navigate(NutritionPlanForm(route.clientId)) },
                     onUnauthorized = {
-                        loginViewModel.logout()
-                        navController.navigate(Login) {
-                            popUpTo(MainGraph) { inclusive = true }
+                        loginViewModel.logout {
+                            navController.navigate(Login) {
+                                popUpTo(MainGraph) { inclusive = true }
+                            }
                         }
                     },
                     onAccessDenied = {
@@ -280,9 +292,10 @@ fun GymNavHost(
                         navController.navigate(NutritionPlanForm(clientId, planId))
                     },
                     onUnauthorized = {
-                        loginViewModel.logout()
-                        navController.navigate(Login) {
-                            popUpTo(MainGraph) { inclusive = true }
+                        loginViewModel.logout {
+                            navController.navigate(Login) {
+                                popUpTo(MainGraph) { inclusive = true }
+                            }
                         }
                     },
                     onAccessDenied = {
@@ -302,9 +315,10 @@ fun GymNavHost(
                     canManage = (homeState as? HomeUiState.Success)?.user?.role == "TRAINER",
                     onSaved = { navController.navigate(NutritionPlanDetail(it)) },
                     onUnauthorized = {
-                        loginViewModel.logout()
-                        navController.navigate(Login) {
-                            popUpTo(MainGraph) { inclusive = true }
+                        loginViewModel.logout {
+                            navController.navigate(Login) {
+                                popUpTo(MainGraph) { inclusive = true }
+                            }
                         }
                     },
                     onAccessDenied = {
@@ -325,9 +339,10 @@ fun GymNavHost(
                     onCreate = { navController.navigate(FoodForm()) },
                     onEdit = { navController.navigate(FoodForm(it)) },
                     onUnauthorized = {
-                        loginViewModel.logout()
-                        navController.navigate(Login) {
-                            popUpTo(MainGraph) { inclusive = true }
+                        loginViewModel.logout {
+                            navController.navigate(Login) {
+                                popUpTo(MainGraph) { inclusive = true }
+                            }
                         }
                     },
                 )
@@ -342,9 +357,10 @@ fun GymNavHost(
                     canManage = canManage,
                     onEdit = { navController.navigate(FoodForm(it)) },
                     onUnauthorized = {
-                        loginViewModel.logout()
-                        navController.navigate(Login) {
-                            popUpTo(MainGraph) { inclusive = true }
+                        loginViewModel.logout {
+                            navController.navigate(Login) {
+                                popUpTo(MainGraph) { inclusive = true }
+                            }
                         }
                     },
                 )
@@ -356,9 +372,10 @@ fun GymNavHost(
                     viewModel = foodViewModel,
                     onSaved = { navController.navigate(FoodDetail(it)) },
                     onUnauthorized = {
-                        loginViewModel.logout()
-                        navController.navigate(Login) {
-                            popUpTo(MainGraph) { inclusive = true }
+                        loginViewModel.logout {
+                            navController.navigate(Login) {
+                                popUpTo(MainGraph) { inclusive = true }
+                            }
                         }
                     },
                 )
@@ -368,9 +385,10 @@ fun GymNavHost(
                     viewModel = myNutritionViewModel,
                     onPlanSelected = { navController.navigate(MyNutritionPlan(it)) },
                     onUnauthorized = {
-                        loginViewModel.logout()
-                        navController.navigate(Login) {
-                            popUpTo(MainGraph) { inclusive = true }
+                        loginViewModel.logout {
+                            navController.navigate(Login) {
+                                popUpTo(MainGraph) { inclusive = true }
+                            }
                         }
                     },
                 )
@@ -381,9 +399,10 @@ fun GymNavHost(
                     planId = route.planId,
                     viewModel = myNutritionViewModel,
                     onUnauthorized = {
-                        loginViewModel.logout()
-                        navController.navigate(Login) {
-                            popUpTo(MainGraph) { inclusive = true }
+                        loginViewModel.logout {
+                            navController.navigate(Login) {
+                                popUpTo(MainGraph) { inclusive = true }
+                            }
                         }
                     },
                 )
@@ -401,9 +420,10 @@ fun GymNavHost(
                         navController.navigate(WorkoutTemplateForm(templateId))
                     },
                     onUnauthorized = {
-                        loginViewModel.logout()
-                        navController.navigate(Login) {
-                            popUpTo(MainGraph) { inclusive = true }
+                        loginViewModel.logout {
+                            navController.navigate(Login) {
+                                popUpTo(MainGraph) { inclusive = true }
+                            }
                         }
                     },
                 )
@@ -417,9 +437,10 @@ fun GymNavHost(
                         navController.navigate(WorkoutTemplateForm(templateId))
                     },
                     onUnauthorized = {
-                        loginViewModel.logout()
-                        navController.navigate(Login) {
-                            popUpTo(MainGraph) { inclusive = true }
+                        loginViewModel.logout {
+                            navController.navigate(Login) {
+                                popUpTo(MainGraph) { inclusive = true }
+                            }
                         }
                     },
                 )
@@ -431,9 +452,10 @@ fun GymNavHost(
                     viewModel = workoutTemplatesViewModel,
                     onSaved = { navController.popBackStack() },
                     onUnauthorized = {
-                        loginViewModel.logout()
-                        navController.navigate(Login) {
-                            popUpTo(MainGraph) { inclusive = true }
+                        loginViewModel.logout {
+                            navController.navigate(Login) {
+                                popUpTo(MainGraph) { inclusive = true }
+                            }
                         }
                     },
                 )

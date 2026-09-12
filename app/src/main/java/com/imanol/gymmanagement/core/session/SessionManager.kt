@@ -42,8 +42,10 @@ class SessionManager @Inject constructor(
         }
 
     suspend fun saveSession(token: String, tokenType: String, expiresIn: Long) {
-        sessionDataStore.saveSession(token, tokenType, expiresIn)
-        _status.value = SessionStatus.Authenticated
+        invalidationMutex.withLock {
+            sessionDataStore.saveSession(token, tokenType, expiresIn)
+            _status.value = SessionStatus.Authenticated
+        }
     }
 
     suspend fun logout() {

@@ -5,6 +5,9 @@ import androidx.datastore.preferences.core.edit
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
@@ -187,6 +190,46 @@ class SessionDataStoreTest {
         sessionManager.logout()
         assertNull(dataStore.getValidSession())
         assertEquals(SessionStatus.Unauthenticated, sessionManager.status.value)
+    }
+
+    @Test
+    fun logoutCompletesBeforeAnImmediatelyStartedLoginCanSaveSession() = runBlocking {
+        sessionManager.saveSession("old-token", "Bearer", 60_000)
+
+        val logout = async(start = CoroutineStart.UNDISPATCHED) {
+            sessionManager.logout()
+        }
+        val login = async(start = CoroutineStart.UNDISPATCHED) {
+            sessionManager.saveSession("new-token", "Bearer", 60_000)
+        }
+
+        logout.await()
+        login.await()
+
+        assertEquals("new-token", sessionManager.currentSession()?.token)
+        assertEquals(SessionStatus.Authenticated, sessionManager.status.value)
+    }
+
+    @Test
+    fun concurrentLogoutAndLoginOperationsLeaveAConsistentSessionState() = runBlocking {
+        sessionManager.saveSession("initial-token", "Bearer", 60_000)
+
+        (1..40).map { index ->
+            async {
+                if (index % 2 == 0) {
+                    sessionManager.logout()
+                } else {
+                    sessionManager.saveSession("token-$index", "Bearer", 60_000)
+                }
+            }
+        }.awaitAll()
+
+        val session = sessionManager.currentSession()
+        assertEquals(
+            if (session == null) SessionStatus.Unauthenticated else SessionStatus.Authenticated,
+            sessionManager.status.value,
+        )
+        assertTrue(session == null || session.token.startsWith("token-"))
     }
 
     private suspend fun assertInvalidSave(token: String, tokenType: String, expiresIn: Long) {
