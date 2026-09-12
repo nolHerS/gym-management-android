@@ -46,9 +46,11 @@ fun WorkoutPlansScreen(clientId: Long, viewModel: WorkoutPlanViewModel, onPlanSe
 }
 
 @Composable
-fun CreateWorkoutPlanScreen(clientId: Long, viewModel: WorkoutPlanViewModel, onCreated: (Long) -> Unit) {
+fun WorkoutPlanFormScreen(clientId: Long, planId: Long?, viewModel: WorkoutPlanViewModel, onSaved: (Long) -> Unit) {
     val state by viewModel.createState.collectAsStateWithLifecycle()
-    LaunchedEffect(Unit) { viewModel.prepareCreate() }
+    LaunchedEffect(planId) {
+        if (planId == null) viewModel.prepareCreate() else viewModel.prepareEdit(planId)
+    }
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -57,7 +59,7 @@ fun CreateWorkoutPlanScreen(clientId: Long, viewModel: WorkoutPlanViewModel, onC
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         item {
-            Text("Crear plan", style = MaterialTheme.typography.headlineSmall)
+            Text(if (planId == null) "Crear plan" else "Editar plan", style = MaterialTheme.typography.headlineSmall)
             OutlinedTextField(
                 state.startDate,
                 viewModel::setStartDate,
@@ -68,10 +70,12 @@ fun CreateWorkoutPlanScreen(clientId: Long, viewModel: WorkoutPlanViewModel, onC
                 viewModel::setEndDate,
                 label = { Text("Fin (opcional)") },
             )
-            Text("Plantilla", style = MaterialTheme.typography.titleMedium)
-            TextButton(onClick = viewModel::selectFromScratch) { Text("Crear desde cero") }
+            if (planId == null) {
+                Text("Plantilla", style = MaterialTheme.typography.titleMedium)
+                TextButton(onClick = viewModel::selectFromScratch) { Text("Crear desde cero") }
+            }
         }
-        items(state.templates, key = { "template-${it.id}" }) { template ->
+        if (planId == null) items(state.templates, key = { "template-${it.id}" }) { template ->
             OutlinedButton(
                 onClick = { viewModel.selectTemplate(template) },
                 modifier = Modifier.fillMaxWidth(),
@@ -79,7 +83,7 @@ fun CreateWorkoutPlanScreen(clientId: Long, viewModel: WorkoutPlanViewModel, onC
                 Text(if (state.template?.id == template.id) "${template.name} (seleccionada)" else template.name)
             }
         }
-        state.templateDetail?.exercises?.forEach { templateExercise ->
+        if (planId == null) state.templateDetail?.exercises?.forEach { templateExercise ->
             state.drafts[templateExercise.id]?.let { request ->
                 item(key = "exercise-${templateExercise.id}") {
                     Text(templateExercise.exercise.name, style = MaterialTheme.typography.titleSmall)
@@ -137,16 +141,29 @@ fun CreateWorkoutPlanScreen(clientId: Long, viewModel: WorkoutPlanViewModel, onC
             }
         }
         item {
+            if (state.loading) CircularProgressIndicator()
             state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-            Button(enabled = !state.saving, onClick = { viewModel.create(clientId, onCreated) }) { Text("Guardar") }
+            Button(
+                enabled = !state.loading && !state.saving,
+                onClick = {
+                    if (planId == null) viewModel.create(clientId, onSaved)
+                    else viewModel.update(onSaved)
+                },
+            ) { Text("Guardar") }
         }
     }
 }
 
 @Composable
-fun WorkoutPlanDetailScreen(planId: Long, viewModel: WorkoutPlanViewModel, onUnauthorized: () -> Unit) {
+fun WorkoutPlanDetailScreen(
+    planId: Long,
+    viewModel: WorkoutPlanViewModel,
+    canManage: Boolean,
+    onEdit: (Long) -> Unit,
+    onUnauthorized: () -> Unit,
+) {
     val state by viewModel.detail.collectAsStateWithLifecycle()
-    LaunchedEffect(planId) { viewModel.loadDetail(planId) }
+    LaunchedEffect(planId) { viewModel.loadDetailIfNeeded(planId) }
     LaunchedEffect(state) {
         if (state is WorkoutPlanDetailState.Unauthorized) onUnauthorized()
     }
@@ -156,7 +173,15 @@ fun WorkoutPlanDetailScreen(planId: Long, viewModel: WorkoutPlanViewModel, onUna
             WorkoutPlanDetailState.Loading -> CircularProgressIndicator()
             is WorkoutPlanDetailState.Error -> Text(s.message)
             WorkoutPlanDetailState.Unauthorized -> Unit
-            is WorkoutPlanDetailState.Success -> { Text("Estado: ${s.plan.status}"); Text("Desde: ${s.plan.startDate}"); s.plan.days.forEach { day -> Text("Día ${day.dayOfWeek}: ${day.exercises.size} ejercicios") } }
+            is WorkoutPlanDetailState.Success -> {
+                Text("Estado: ${s.plan.status}")
+                Text("Desde: ${s.plan.startDate}")
+                s.plan.endDate?.let { Text("Hasta: $it") }
+                if (canManage && s.plan.status == "ACTIVE") {
+                    Button(onClick = { onEdit(s.plan.clientId) }) { Text("Editar") }
+                }
+                s.plan.days.forEach { day -> Text("Día ${day.dayOfWeek}: ${day.exercises.size} ejercicios") }
+            }
         }
     }
 }

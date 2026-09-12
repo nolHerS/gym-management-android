@@ -76,7 +76,7 @@ class MyWorkoutPlanViewModel @Inject constructor(
                 }
             } catch (exception: CancellationException) {
                 throw exception
-            } catch (throwable: Throwable) {
+            } catch (throwable: Exception) {
                 val exception = throwable.toAppException()
                 _uiState.value = if (exception is AppException.Unauthorized) {
                     MyWorkoutPlanUiState.Unauthorized(monday)

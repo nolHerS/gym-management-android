@@ -38,7 +38,7 @@ data class ClientDetail(val clientId: Long)
 @Serializable
 data class WorkoutPlans(val clientId: Long)
 @Serializable
-data class CreateWorkoutPlan(val clientId: Long)
+data class WorkoutPlanForm(val clientId: Long, val planId: Long? = null)
 
 @Serializable
 data class WorkoutPlanDetail(val planId: Long)

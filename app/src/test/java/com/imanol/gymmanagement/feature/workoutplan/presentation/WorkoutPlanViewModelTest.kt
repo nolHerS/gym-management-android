@@ -1,5 +1,6 @@
 package com.imanol.gymmanagement.feature.workoutplan.presentation
 
+import com.imanol.gymmanagement.core.domain.AppException
 import com.imanol.gymmanagement.feature.workout.domain.GetWorkoutTemplateDetailUseCase
 import com.imanol.gymmanagement.feature.workout.domain.GetWorkoutTemplatesUseCase
 import com.imanol.gymmanagement.feature.workout.domain.WorkoutRepository
@@ -8,6 +9,8 @@ import com.imanol.gymmanagement.feature.workout.domain.WorkoutTemplateDetail
 import com.imanol.gymmanagement.feature.workout.domain.WorkoutTemplateExercise
 import com.imanol.gymmanagement.feature.workoutplan.domain.*
 import java.io.IOException
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import okhttp3.ResponseBody.Companion.toResponseBody
@@ -22,11 +25,11 @@ class WorkoutPlanViewModelTest {
 
     @Test
     fun listHandlesEmptyErrorAndUnauthorized() {
-        assertEquals(WorkoutPlansState.Empty, viewModel { emptyList() }.also { it.load(2L) }.plans.value)
-        assertTrue(viewModel { throw IOException() }.also { it.load(2L) }.plans.value is WorkoutPlansState.Error)
+        assertEquals(WorkoutPlansState.Empty, viewModel(result = { emptyList() }).also { it.load(2L) }.plans.value)
+        assertTrue(viewModel(result = { throw IOException() }).also { it.load(2L) }.plans.value is WorkoutPlansState.Error)
         assertEquals(
             WorkoutPlansState.Unauthorized,
-            viewModel { throw HttpException(Response.error<Unit>(401, "Unauthorized".toResponseBody())) }
+            viewModel(result = { throw HttpException(Response.error<Unit>(401, "Unauthorized".toResponseBody())) })
                 .also { it.load(2L) }
                 .plans.value,
         )
@@ -34,9 +37,9 @@ class WorkoutPlanViewModelTest {
 
     @Test
     fun listConflictProducesErrorState() {
-        val viewModel = viewModel {
+        val viewModel = viewModel(result = {
             throw HttpException(Response.error<Unit>(409, "Conflict".toResponseBody()))
-        }
+        })
 
         viewModel.load(2L)
 
@@ -49,20 +52,91 @@ class WorkoutPlanViewModelTest {
 
     @Test
     fun createViewModelRejectsMissingDatesAndExercises() {
-        val viewModel = viewModel { emptyList() }
+        val viewModel = viewModel(result = { emptyList() })
         viewModel.prepareCreate()
         viewModel.create(2L) {}
         assertTrue(viewModel.createState.value.error != null)
     }
 
-    private fun viewModel(result: suspend () -> List<WorkoutPlan>): WorkoutPlanViewModel {
+    @Test
+    fun editLoadsExistingPlanAndUpdatesIt() {
+        val updated = plan.copy(startDate = "2026-09-03", endDate = "2026-09-30")
+        val viewModel = viewModel(
+            planResult = { plan },
+            updateResult = { request ->
+                assertEquals("2026-09-03", request.startDate)
+                updated
+            },
+        )
+
+        viewModel.prepareEdit(plan.id)
+        assertEquals("2026-09-01", viewModel.createState.value.startDate)
+        viewModel.setStartDate("2026-09-03")
+        viewModel.update {}
+
+        assertTrue(viewModel.createState.value.saved)
+        assertEquals(updated, (viewModel.detail.value as WorkoutPlanDetailState.Success).plan)
+    }
+
+    @Test
+    fun editMapsSemanticErrors() {
+        val cases = listOf(
+            AppException.BadRequest(IOException()) to "El servidor rechazó los datos enviados. Revisa la información e inténtalo de nuevo.",
+            AppException.Forbidden(IOException()) to "No tienes permisos para modificar este plan.",
+            AppException.NotFound(IOException()) to "El plan ya no existe.",
+            AppException.Conflict(IOException()) to "El plan ha cambiado o existe un conflicto. Vuelve a cargarlo antes de continuar.",
+            AppException.Server(IOException()) to "Se ha producido un error en el servidor.",
+            AppException.Network(IOException()) to "No se pudo conectar con el servidor.",
+            AppException.Serialization(IOException()) to "No se pudo interpretar la respuesta del servidor.",
+        )
+
+        cases.forEach { (failure, message) ->
+            val viewModel = viewModel(updateResult = { throw failure })
+            viewModel.prepareEdit(plan.id)
+            viewModel.update {}
+            assertEquals(message, viewModel.createState.value.error)
+        }
+    }
+
+    @Test
+    fun editRethrowsCancellation() {
+        val viewModel = viewModel(planResult = { throw CancellationException() })
+
+        viewModel.prepareEdit(plan.id)
+        assertTrue(viewModel.createState.value.loading)
+        assertEquals(null, viewModel.createState.value.error)
+    }
+
+    @Test
+    fun editIgnoresSecondSubmitWhileSaving() {
+        val gate = CompletableDeferred<WorkoutPlan>()
+        var calls = 0
+        val viewModel = viewModel(
+            updateResult = {
+                calls++
+                gate.await()
+            },
+        )
+        viewModel.prepareEdit(plan.id)
+        viewModel.update {}
+        viewModel.update {}
+
+        assertEquals(1, calls)
+        gate.complete(plan)
+    }
+
+    private fun viewModel(
+        result: suspend () -> List<WorkoutPlan> = { emptyList() },
+        planResult: suspend () -> WorkoutPlan = { plan },
+        updateResult: suspend (UpdateWorkoutPlanRequest) -> WorkoutPlan = { plan },
+    ): WorkoutPlanViewModel {
         val repository = object : WorkoutPlanRepository {
             override suspend fun getMine() = emptyList<WorkoutPlan>()
             override suspend fun getMyWeek(weekStart: String) = emptyList<WorkoutPlan>()
             override suspend fun create(clientId: Long, request: CreateWorkoutPlanRequest) = plan
             override suspend fun getForClient(clientId: Long) = result()
-            override suspend fun get(id: Long) = plan
-            override suspend fun update(id: Long, request: UpdateWorkoutPlanRequest) = plan
+            override suspend fun get(id: Long) = planResult()
+            override suspend fun update(id: Long, request: UpdateWorkoutPlanRequest) = updateResult(request)
             override suspend fun addDay(planId: Long, request: WorkoutPlanDayRequest) =
                 WorkoutPlanDay(1L, request.dayOfWeek, emptyList())
             override suspend fun deleteDay(planId: Long, day: Int) = Unit
@@ -95,6 +169,7 @@ class WorkoutPlanViewModelTest {
             GetClientWorkoutPlansUseCase(repository),
             GetWorkoutPlanDetailUseCase(repository),
             CreateWorkoutPlanUseCase(repository),
+            UpdateWorkoutPlanUseCase(repository),
             GetWorkoutTemplatesUseCase(workoutRepository),
             GetWorkoutTemplateDetailUseCase(workoutRepository),
             CoroutineScope(Dispatchers.Unconfined),

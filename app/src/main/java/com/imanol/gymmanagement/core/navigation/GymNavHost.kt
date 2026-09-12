@@ -205,15 +205,21 @@ fun GymNavHost(
             }
             composable<WorkoutPlans> { entry ->
                 val route = entry.toRoute<WorkoutPlans>()
-                WorkoutPlansScreen(route.clientId, workoutPlanViewModel, { navController.navigate(WorkoutPlanDetail(it)) }, {}, { navController.navigate(CreateWorkoutPlan(route.clientId)) })
+                WorkoutPlansScreen(route.clientId, workoutPlanViewModel, { navController.navigate(WorkoutPlanDetail(it)) }, {}, { navController.navigate(WorkoutPlanForm(route.clientId)) })
             }
-            composable<CreateWorkoutPlan> { entry ->
-                val route = entry.toRoute<CreateWorkoutPlan>()
-                CreateWorkoutPlanScreen(route.clientId, workoutPlanViewModel) { navController.navigate(WorkoutPlanDetail(it)) }
+            composable<WorkoutPlanForm> { entry ->
+                val route = entry.toRoute<WorkoutPlanForm>()
+                WorkoutPlanFormScreen(route.clientId, route.planId, workoutPlanViewModel) { navController.navigate(WorkoutPlanDetail(it)) }
             }
             composable<WorkoutPlanDetail> { entry ->
                 val route = entry.toRoute<WorkoutPlanDetail>()
-                WorkoutPlanDetailScreen(route.planId, workoutPlanViewModel) {}
+                WorkoutPlanDetailScreen(
+                    route.planId,
+                    workoutPlanViewModel,
+                    canManage = (homeState as? HomeUiState.Success)?.user?.role == "TRAINER",
+                    onEdit = { navController.navigate(WorkoutPlanForm((homeState as? HomeUiState.Success)?.user?.id ?: 0L, route.planId)) },
+                    onUnauthorized = {},
+                )
             }
             composable<NutritionPlans> { entry ->
                 val route = entry.toRoute<NutritionPlans>()

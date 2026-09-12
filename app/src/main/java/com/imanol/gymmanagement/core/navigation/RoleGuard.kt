@@ -11,7 +11,7 @@ object RoleGuard {
         Clients::class.qualifiedName,
         ClientDetail::class.qualifiedName,
         WorkoutPlans::class.qualifiedName,
-        CreateWorkoutPlan::class.qualifiedName,
+        WorkoutPlanForm::class.qualifiedName,
         WorkoutPlanDetail::class.qualifiedName,
         WorkoutTemplates::class.qualifiedName,
         WorkoutTemplateDetail::class.qualifiedName,
